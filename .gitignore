@@ -175,3 +175,46 @@ build/
 *.7z
 *.tar
 *.gz
+# Python packaging
+*.egg-info/
+
+# Local editor
+.vscode/
+.idea/
+
+# Obsidian
+.obsidian/
+
+# Local config
+.impeccable/config.local.json
+
+# Python caches
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment
+.env
+.env.*
+
+# Database
+*.db
+*.sqlite
+
+# Node
+node_modules/
+dist/
+build/
+
+# Generated reports (if recreated automatically)
+htmlcov/
+coverage/
+
+# Market datasets
+MarketData/
+data/
+data1/
+data2/
+data3/
+data4/

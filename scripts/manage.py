@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Add project directory to sys.path
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlalchemy import func, select, text
 

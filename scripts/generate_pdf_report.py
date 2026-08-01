@@ -102,4 +102,4 @@ startxref
 
 
 if __name__ == "__main__":
-    generate_pdf("PHASE1_LIVE_MARKET_DATA_AUDIT_REPORT.pdf")
+    generate_pdf("docs/PHASE1_LIVE_MARKET_DATA_AUDIT_REPORT.pdf")
