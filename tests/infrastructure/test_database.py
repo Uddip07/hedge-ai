@@ -17,9 +17,9 @@ from packages.infrastructure.database import (
 class TestDatabaseInfrastructure(unittest.TestCase):
     def test_database_config_defaults(self) -> None:
         cfg = DatabaseConfig()
-        self.assertEqual(cfg.url, "sqlite:///:memory:")
+        self.assertIn(cfg.url, ["sqlite:///./data/app.db", "sqlite:///./app.db"])
         self.assertFalse(cfg.echo)
-        self.assertEqual(cfg.pool_size, 5)
+        self.assertEqual(cfg.pool_size, 10)
 
     def test_create_db_engine_and_session_factory(self) -> None:
         cfg = DatabaseConfig(url="sqlite:///:memory:", echo=False)

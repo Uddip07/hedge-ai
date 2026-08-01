@@ -48,7 +48,13 @@ class EntityId:
     @classmethod
     def from_str(cls: type[T], val_str: str) -> T:
         """Parse string to typed EntityId."""
-        return cls(value=uuid.UUID(val_str))
+        try:
+            return cls(value=uuid.UUID(val_str))
+        except (ValueError, TypeError) as exc:
+            raise ValidationError(
+                f"Invalid UUID string for {cls.__name__}: '{val_str}'",
+                context={"id_type": cls.__name__, "raw_val": str(val_str)},
+            ) from exc
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize ID value object to dictionary."""
@@ -57,7 +63,13 @@ class EntityId:
     @classmethod
     def from_dict(cls: type[T], data: dict[str, Any]) -> T:
         """Deserialize dictionary payload to EntityId."""
-        return cls(value=uuid.UUID(data["id"]))
+        try:
+            return cls(value=uuid.UUID(data["id"]))
+        except (ValueError, TypeError, KeyError) as exc:
+            raise ValidationError(
+                f"Invalid UUID payload for {cls.__name__}: '{data}'",
+                context={"id_type": cls.__name__, "data": data},
+            ) from exc
 
     def __str__(self) -> str:
         return str(self.value)
