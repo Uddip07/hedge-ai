@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "https://YOUR_BACKEND_URL/$1" },
+    { "src": "/(.*)", "dest": "/frontend/index.html" }
+  ],
+  "env": {
+    "VITE_API_BASE_URL": "https://YOUR_BACKEND_URL"
+  }
+}

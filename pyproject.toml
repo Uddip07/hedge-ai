@@ -1,0 +1,133 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "indian-hedge-fund-ai"
+version = "0.1.0"
+description = "Institutional-Grade Multi-Agent AI Investment Research, Quantitative Backtesting & Portfolio Execution Platform for Indian Markets"
+readme = "README.md"
+authors = [
+    { name = "Uddip", email = "uddip07@users.noreply.github.com" }
+]
+license = { text = "Apache-2.0" }
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+
+dependencies = [
+    "pydantic[email]>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "sqlalchemy>=2.0.0",
+    "redis>=5.0.0",
+    "fastapi>=0.100.0",
+    "httpx>=0.24.0",
+    "PyJWT>=2.8.0",
+    "argon2-cffi>=23.1.0",
+    "email-validator>=2.0.0",
+    "yfinance>=0.2.0",
+    "kiteconnect>=5.0.0",
+]
+
+
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.3.0",
+    "black>=24.2.0",
+    "mypy>=1.8.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pre-commit>=3.6.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["packages*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.analysis
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = [
+    ".git",
+    ".analysis",
+    ".venv",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+]
+ignore = [
+    "E501", # line length handled by black
+    "B008", # do not perform function calls in argument defaults
+    "B024", # abstract base class without abstract methods
+    "UP046",# generic class syntax
+    "N818", # exception name Error suffix
+    "F841", # unused local variable in tests
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["packages"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+show_error_codes = true
+exclude = "(^|/)\\.analysis/|(^|/)alembic/"
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["redis.*", "yfinance.*", "kiteconnect.*", "pytest"]
+ignore_missing_imports = true
+
+
+
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --strict-markers"
+norecursedirs = [".analysis", ".venv", ".git"]

@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "properties": {
+    "recommendation": {
+      "type": "string",
+      "enum": ["STRONG_BUY", "BUY", "HOLD", "SELL", "STRONG_SELL"]
+    },
+    "score": {
+      "type": "number",
+      "minimum": -1.0,
+      "maximum": 1.0
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "reasoning": {
+      "type": "string"
+    }
+  },
+  "required": ["recommendation", "score", "confidence", "reasoning"]
+}

@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "properties": {
+    "recommendation": { "type": "string" },
+    "score": { "type": "number" },
+    "confidence": { "type": "number" },
+    "reasoning": { "type": "string" }
+  },
+  "required": ["recommendation", "score", "confidence", "reasoning"]
+}

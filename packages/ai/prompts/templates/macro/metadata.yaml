@@ -1,0 +1,8 @@
+agent_type: MACRO
+version: 1.0.0
+author: HedgeFundAI
+description: Macroeconomic strategy prompt.
+required_placeholders:
+  - ticker
+  - market_data
+  - rag_evidence

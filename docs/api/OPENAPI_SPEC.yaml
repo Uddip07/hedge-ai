@@ -1,0 +1,129 @@
+openapi: 3.0.3
+info:
+  title: MONEYYYYYY AI Investment Operating System API
+  version: 1.0.0-rc1
+  description: Frozen REST API specification for MONEYYYYYY backend platform.
+servers:
+  - url: http://localhost:8000
+    description: Local Development Server
+  - url: https://api.moneyyyyyy.internal/v1
+    description: Production Release Candidate Server
+
+paths:
+  /:
+    get:
+      summary: Root Status
+      operationId: getRoot
+      responses:
+        '200':
+          description: Root status payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  application: { type: string, example: MONEYYYYYY }
+                  version: { type: string, example: 1.0.0 }
+                  status: { type: string, example: running }
+
+  /health:
+    get:
+      summary: Health Check
+      operationId: getHealth
+      responses:
+        '200':
+          description: Health check status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: healthy }
+                  database: { type: string, example: production }
+                  cache: { type: string, example: production }
+                  application: { type: string, example: running }
+
+  /version:
+    get:
+      summary: Version Information
+      operationId: getVersion
+      responses:
+        '200':
+          description: Version metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string, example: MONEYYYYYY API }
+                  version: { type: string, example: 1.0.0 }
+                  environment: { type: string, example: production }
+
+  /analyze:
+    post:
+      summary: Analyze Single Stock
+      operationId: analyzeStock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ticker]
+              properties:
+                ticker: { type: string, example: RELIANCE.NSE }
+                portfolio_id: { type: string, format: uuid, nullable: true }
+                investment_horizon_days: { type: integer, default: 365 }
+      responses:
+        '200':
+          description: Research analysis response
+        '422':
+          description: Validation error
+
+  /market/{ticker}:
+    get:
+      summary: Get Market Quote
+      operationId: getMarketData
+      parameters:
+        - name: ticker
+          in: path
+          required: true
+          schema: { type: string, example: RELIANCE.NSE }
+      responses:
+        '200':
+          description: Market quote payload
+        '422':
+          description: Invalid ticker format
+
+  /company-intelligence/{ticker}:
+    get:
+      summary: Get End-to-End Company Research Report
+      operationId: getCompanyIntelligence
+      parameters:
+        - name: ticker
+          in: path
+          required: true
+          schema: { type: string, example: INFY.NSE }
+      responses:
+        '200':
+          description: Company intelligence report
+
+  /committee/evaluate:
+    post:
+      summary: Evaluate Committee Decision
+      operationId: evaluateCommittee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ticker]
+              properties:
+                ticker: { type: string, example: SBIN.NSE }
+                horizon: { type: string, enum: [INTRADAY, DAILY, SWING, LONG_TERM], default: LONG_TERM }
+                style: { type: string, enum: [VALUE, GROWTH, QUANTITATIVE, TECHNICAL, BALANCED], default: BALANCED }
+                user_query: { type: string, example: Execute investment analysis. }
+      responses:
+        '200':
+          description: Committee decision payload

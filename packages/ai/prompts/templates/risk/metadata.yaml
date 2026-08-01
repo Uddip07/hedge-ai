@@ -1,0 +1,8 @@
+agent_type: RISK
+version: 1.0.0
+author: HedgeFundAI
+description: Risk management prompt.
+required_placeholders:
+  - ticker
+  - market_data
+  - rag_evidence

@@ -1,0 +1,8 @@
+agent_type: QUANT
+version: 1.0.0
+author: HedgeFundAI
+description: Technical momentum and oscillator prompt.
+required_placeholders:
+  - ticker
+  - market_data
+  - rag_evidence

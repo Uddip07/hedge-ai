@@ -1,0 +1,177 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.pyre/
+.hypothesis/
+
+# =========================
+# Virtual Environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# Environment Variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+__MACOSX/
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+
+# =========================
+# Databases
+# =========================
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+# Graphify
+# =========================
+graphify-out/
+.graphify_*
+
+# =========================
+# AI / ML Artifacts
+# =========================
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.keras
+*.joblib
+*.pickle
+*.pkl
+*.safetensors
+
+# =========================
+# Large Datasets
+# =========================
+MarketData/
+data/
+data1/
+data2/
+data3/
+data4/
+
+*.csv
+*.parquet
+*.feather
+*.arrow
+
+# =========================
+# Archives
+# =========================
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
+*.bz2
+*.xz
+
+# =========================
+# Node
+# =========================
+node_modules/
+dist/
+build/
+coverage/
+
+# =========================
+# Temporary Files
+# =========================
+tmp/
+temp/
+.cache/
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Misc
+# =========================
+*.bak
+*.orig
+# Large analysis repos
+.analysis/
+
+# Market data
+MarketData/
+data/
+data1/
+data2/
+data3/
+data4/
+
+# Databases
+*.db
+*.sqlite
+
+# Graphify
+graphify-out/
+
+# macOS metadata
+__MACOSX/
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Virtual env
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+build/
+
+# AI models
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.pickle
+
+# Archives
+*.zip
+*.7z
+*.tar
+*.gz

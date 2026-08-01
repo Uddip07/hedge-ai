@@ -1,0 +1,8 @@
+agent_type: SENTIMENT
+version: 1.0.0
+author: HedgeFundAI
+description: News sentiment prompt.
+required_placeholders:
+  - ticker
+  - market_data
+  - rag_evidence

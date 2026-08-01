@@ -1,0 +1,8 @@
+agent_type: PORTFOLIO_MANAGER
+version: 1.0.0
+author: HedgeFundAI
+description: Portfolio manager prompt.
+required_placeholders:
+  - ticker
+  - market_data
+  - rag_evidence

@@ -1,0 +1,12 @@
+# CODEOWNERS for Indian AI Hedge Fund Platform
+
+# Global Owners
+* @Uddip07
+
+# Domain Layer Core
+/packages/domain/ @Uddip07
+
+# Governance & Engineering Infrastructure
+/PROJECT_CONSTITUTION.md @Uddip07
+/.github/ @Uddip07
+/pyproject.toml @Uddip07

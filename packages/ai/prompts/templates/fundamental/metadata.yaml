@@ -1,0 +1,8 @@
+agent_type: FUNDAMENTAL
+version: 1.0.0
+author: HedgeFundAI
+description: Fundamental balance sheet and earnings analysis prompt.
+required_placeholders:
+  - ticker
+  - market_data
+  - rag_evidence
