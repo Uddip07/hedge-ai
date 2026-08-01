@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Terminal, Play, Trash2, Code2, Copy, Check, Server, Layers } from 'lucide-react';
+import { Terminal, Play, Trash2, Code2, Copy, Check } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { apiClient } from '../api/client';
 import { StatusBadge } from '../components/common/StatusBadge';
@@ -13,7 +12,7 @@ export const ApiExplorerPage: React.FC = () => {
   const [selectedMethod, setSelectedMethod] = useState<'GET' | 'POST'>('GET');
   const [requestPayload, setRequestPayload] = useState('{\n  "ticker": "RELIANCE.NSE"\n}');
   const [isExecuting, setIsExecuting] = useState(false);
-  const [manualResult, setManualResult] = useState<any>(null);
+  const [manualResult, setManualResult] = useState<unknown>(null);
   const [copiedResponse, setCopiedResponse] = useState(false);
 
   const endpoints = [
@@ -43,8 +42,9 @@ export const ApiExplorerPage: React.FC = () => {
 
       const res = await apiClient(selectedEndpoint, options);
       setManualResult(res);
-    } catch (err: any) {
-      setManualResult({ error: err.message });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setManualResult({ error: msg });
     } finally {
       setIsExecuting(false);
     }
@@ -59,15 +59,15 @@ export const ApiExplorerPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full min-w-0 font-mono text-xs">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-2xl border border-slate-800/80 bg-slate-900/90 p-6 backdrop-blur-md shadow-xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-2xl border border-[#1E293B] bg-[#121826] p-6 shadow-xl">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <Terminal className="h-6 w-6 text-cyan-400" />
             Interactive REST API Console & Debugger
           </h1>
-          <p className="text-xs font-mono text-slate-400 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             Institutional API console for manually testing endpoints, inspecting JSON responses, and viewing live HTTP logs
           </p>
         </div>
@@ -76,16 +76,16 @@ export const ApiExplorerPage: React.FC = () => {
           variant="outline"
           size="sm"
           onClick={clearLogs}
-          leftIcon={<Trash2 className="h-3.5 w-3.5 text-rose-400" />}
-          className="hover:border-rose-800 hover:text-rose-300"
+          leftIcon={<Trash2 className="h-3.5 w-3.5 text-red-400" />}
+          className="hover:border-red-800 hover:text-red-300"
         >
           Clear Logs
         </Button>
       </div>
 
       {/* Interactive Request Form */}
-      <div className="rounded-2xl border border-slate-800/80 bg-slate-900/90 p-6 backdrop-blur-md shadow-xl space-y-4 font-mono text-xs">
-        <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-3">
+      <div className="rounded-2xl border border-[#1E293B] bg-[#121826] p-6 shadow-xl space-y-4">
+        <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2 border-b border-[#1E293B] pb-3">
           <Code2 className="h-4 w-4 text-cyan-400" />
           Request Builder & Execution Suite
         </h3>
@@ -95,8 +95,8 @@ export const ApiExplorerPage: React.FC = () => {
             <label className="block text-slate-400 mb-1 font-semibold">HTTP Method</label>
             <select
               value={selectedMethod}
-              onChange={(e) => setSelectedMethod(e.target.value as any)}
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2 text-slate-100 font-bold focus:border-cyan-500 focus:outline-none"
+              onChange={(e) => setSelectedMethod(e.target.value as 'GET' | 'POST')}
+              className="w-full rounded-xl border border-[#1E293B] bg-slate-900 px-3.5 py-2 text-slate-100 font-bold focus:border-cyan-500 focus:outline-none"
             >
               <option value="GET">GET</option>
               <option value="POST">POST</option>
@@ -109,7 +109,7 @@ export const ApiExplorerPage: React.FC = () => {
               type="text"
               value={selectedEndpoint}
               onChange={(e) => setSelectedEndpoint(e.target.value)}
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2 text-slate-100 focus:border-cyan-500 focus:outline-none"
+              className="w-full rounded-xl border border-[#1E293B] bg-slate-900 px-3.5 py-2 text-slate-100 focus:border-cyan-500 focus:outline-none"
             />
           </div>
 
@@ -135,18 +135,17 @@ export const ApiExplorerPage: React.FC = () => {
               rows={4}
               value={requestPayload}
               onChange={(e) => setRequestPayload(e.target.value)}
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 p-3 text-slate-100 focus:border-cyan-500 focus:outline-none"
+              className="w-full rounded-xl border border-[#1E293B] bg-slate-900 p-3 text-slate-100 focus:border-cyan-500 focus:outline-none"
             />
           </div>
         )}
 
         {/* Response Body Inspector */}
-        {manualResult && (
-          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+        {manualResult !== null && (
+          <div className="rounded-xl border border-[#1E293B] bg-slate-900 p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-[#1E293B] pb-2">
               <div className="flex items-center gap-2">
                 <span className="text-slate-400 font-bold">Response JSON Payload</span>
-                {manualResult.status && <StatusBadge status={String(manualResult.status)} size="sm" />}
               </div>
               <button
                 onClick={copyResponseJson}
@@ -164,8 +163,8 @@ export const ApiExplorerPage: React.FC = () => {
       </div>
 
       {/* Discovered Endpoints Grid */}
-      <div className="rounded-2xl border border-slate-800/80 bg-slate-900/90 p-6 backdrop-blur-md shadow-xl space-y-4 font-mono text-xs">
-        <h3 className="text-sm font-bold text-slate-200 border-b border-slate-800 pb-3">
+      <div className="rounded-2xl border border-[#1E293B] bg-[#121826] p-6 shadow-xl space-y-4">
+        <h3 className="text-sm font-bold text-slate-200 border-b border-[#1E293B] pb-3">
           Discovered OpenAPI Endpoints
         </h3>
 
@@ -174,10 +173,10 @@ export const ApiExplorerPage: React.FC = () => {
             <div
               key={idx}
               onClick={() => {
-                setSelectedMethod(ep.method as any);
+                setSelectedMethod(ep.method as 'GET' | 'POST');
                 setSelectedEndpoint(ep.path);
               }}
-              className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 p-3.5 hover:border-cyan-800 hover:bg-slate-900/60 transition-all cursor-pointer select-none"
+              className="flex items-center justify-between rounded-xl border border-[#1E293B] bg-slate-900 p-3.5 hover:border-cyan-800 hover:bg-slate-800/60 transition-all cursor-pointer select-none"
             >
               <div>
                 <div className="flex items-center gap-2">
@@ -195,8 +194,8 @@ export const ApiExplorerPage: React.FC = () => {
       </div>
 
       {/* Live Request Journal */}
-      <div className="rounded-2xl border border-slate-800/80 bg-slate-900/90 p-6 backdrop-blur-md shadow-xl space-y-4 font-mono text-xs">
-        <h3 className="text-sm font-bold text-slate-200 border-b border-slate-800 pb-3">
+      <div className="rounded-2xl border border-[#1E293B] bg-[#121826] p-6 shadow-xl space-y-4">
+        <h3 className="text-sm font-bold text-slate-200 border-b border-[#1E293B] pb-3">
           Live HTTP Request Journal ({apiLogs.length})
         </h3>
 
@@ -207,7 +206,7 @@ export const ApiExplorerPage: React.FC = () => {
             apiLogs.map((log) => (
               <div
                 key={log.id}
-                className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 p-3"
+                className="flex items-center justify-between rounded-xl border border-[#1E293B] bg-slate-900 p-3"
               >
                 <div className="flex items-center gap-3">
                   <StatusBadge status={String(log.status)} size="sm" />

@@ -16,6 +16,7 @@ from packages.api.routers.health import router as health_router
 from packages.api.routers.market import router as market_router
 from packages.api.routers.market_data import router as market_data_router
 from packages.api.routers.user import router as user_router
+from packages.api.routers.ws_market import router as ws_market_router
 
 __all__ = [
     "analyze_router",
@@ -28,4 +29,5 @@ __all__ = [
     "market_router",
     "market_data_router",
     "user_router",
+    "ws_market_router",
 ]

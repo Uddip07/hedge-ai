@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { StatCard } from '../components/common/StatCard';
 import { FinancialChart } from '../components/common/FinancialChart';
-import { History, Play as PlayIcon, CheckCircle2, TrendingUp, BarChart2, ShieldAlert } from 'lucide-react';
-import { motion } from 'framer-motion';
-
+import { Play as PlayIcon, TrendingUp, BarChart2 } from 'lucide-react';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
 export const BacktestingPage: React.FC = () => {
   const [strategyName, setStrategyName] = useState('Momentum Breakout & VWAP Reversion');
@@ -27,29 +25,26 @@ export const BacktestingPage: React.FC = () => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="p-6 space-y-6 max-w-[1600px] mx-auto font-mono"
-    >
+    <div className="space-y-6 w-full max-w-full min-w-0 font-mono">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-5 rounded-2xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#121826] p-5 rounded-2xl border border-[#1E293B]">
         <div>
           <div className="flex items-center gap-2 text-xs text-cyan-400 font-semibold mb-1">
             <TrendingUp className="h-4 w-4" />
             <span>QUANTITATIVE BACKTESTING ENGINE</span>
           </div>
           <h1 className="text-2xl font-bold text-slate-100">Historical Strategy Simulation</h1>
-          <p className="text-xs text-slate-400">Zero lookahead leakage backtesting on PostgreSQL historical price records.</p>
+          <p className="text-xs text-slate-400">
+            Zero lookahead leakage backtesting on PostgreSQL historical price records.
+          </p>
         </div>
       </div>
 
       {/* Main Grid: Controls + Results */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Controls Panel */}
-        <div className="glass-panel rounded-2xl p-5 border border-white/10 space-y-4">
-          <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2 border-b border-white/10 pb-3">
+        <div className="bg-[#121826] rounded-2xl p-5 border border-[#1E293B] space-y-4 min-w-0">
+          <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2 border-b border-[#1E293B] pb-3">
             <BarChart2 className="h-4 w-4 text-cyan-400" />
             Strategy Configuration
           </h3>
@@ -60,11 +55,11 @@ export const BacktestingPage: React.FC = () => {
               <select
                 value={strategyName}
                 onChange={(e) => setStrategyName(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-slate-100 font-bold focus:outline-none focus:border-cyan-500/50"
+                className="w-full bg-slate-900 border border-[#1E293B] rounded-xl px-3 py-2 text-slate-100 font-bold focus:outline-none focus:border-cyan-500/50"
               >
-                <option value="Momentum Breakout & VWAP Reversion" className="bg-slate-900">Momentum Breakout & VWAP</option>
-                <option value="Dual Moving Average Crossover (20/50)" className="bg-slate-900">Dual MA Crossover (20/50)</option>
-                <option value="Mean Reversion Bollinger Bands" className="bg-slate-900">Bollinger Band Mean Reversion</option>
+                <option value="Momentum Breakout & VWAP Reversion">Momentum Breakout & VWAP</option>
+                <option value="Dual Moving Average Crossover (20/50)">Dual MA Crossover (20/50)</option>
+                <option value="Mean Reversion Bollinger Bands">Bollinger Band Mean Reversion</option>
               </select>
             </div>
 
@@ -74,7 +69,7 @@ export const BacktestingPage: React.FC = () => {
                 type="number"
                 value={initialCapital}
                 onChange={(e) => setInitialCapital(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-slate-100 font-bold focus:outline-none focus:border-cyan-500/50"
+                className="w-full bg-slate-900 border border-[#1E293B] rounded-xl px-3 py-2 text-slate-100 font-bold focus:outline-none focus:border-cyan-500/50"
               />
             </div>
 
@@ -84,7 +79,7 @@ export const BacktestingPage: React.FC = () => {
                 <input
                   type="number"
                   defaultValue="2.5"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-slate-100 font-bold focus:outline-none focus:border-cyan-500/50"
+                  className="w-full bg-slate-900 border border-[#1E293B] rounded-xl px-3 py-2 text-slate-100 font-bold focus:outline-none focus:border-cyan-500/50"
                 />
               </div>
               <div className="space-y-1.5">
@@ -92,7 +87,7 @@ export const BacktestingPage: React.FC = () => {
                 <input
                   type="number"
                   defaultValue="6.0"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-slate-100 font-bold focus:outline-none focus:border-cyan-500/50"
+                  className="w-full bg-slate-900 border border-[#1E293B] rounded-xl px-3 py-2 text-slate-100 font-bold focus:outline-none focus:border-cyan-500/50"
                 />
               </div>
             </div>
@@ -109,30 +104,32 @@ export const BacktestingPage: React.FC = () => {
         </div>
 
         {/* Results Graph & Metrics */}
-        <div className="lg:col-span-2 space-y-6">
-          <FinancialChart data={equityCurveData} symbol="EQUITY_CURVE" height={340} />
+        <div className="lg:col-span-2 space-y-6 min-w-0">
+          <ErrorBoundary fallbackTitle="Equity Curve Error">
+            <FinancialChart data={equityCurveData} symbol="EQUITY_CURVE" height={340} />
+          </ErrorBoundary>
 
           {/* Backtest Performance Indicators */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-1">
+            <div className="p-4 rounded-xl bg-[#121826] border border-[#1E293B] space-y-1">
               <div className="text-[11px] text-slate-400">Total Return</div>
               <div className="text-xl font-bold text-emerald-400 num-tabular">+54.80%</div>
             </div>
-            <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-1">
+            <div className="p-4 rounded-xl bg-[#121826] border border-[#1E293B] space-y-1">
               <div className="text-[11px] text-slate-400">Sharpe Ratio</div>
               <div className="text-xl font-bold text-cyan-300 num-tabular">3.12</div>
             </div>
-            <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-1">
+            <div className="p-4 rounded-xl bg-[#121826] border border-[#1E293B] space-y-1">
               <div className="text-[11px] text-slate-400">Max Drawdown</div>
-              <div className="text-xl font-bold text-rose-400 num-tabular">-3.45%</div>
+              <div className="text-xl font-bold text-red-400 num-tabular">-3.45%</div>
             </div>
-            <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-1">
+            <div className="p-4 rounded-xl bg-[#121826] border border-[#1E293B] space-y-1">
               <div className="text-[11px] text-slate-400">Win Rate</div>
               <div className="text-xl font-bold text-slate-100 num-tabular">72.4%</div>
             </div>
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

@@ -37,6 +37,7 @@ from packages.api.routers import (
     market_data_router,
     market_router,
     user_router,
+    ws_market_router,
 )
 from packages.application.exceptions import ApplicationException
 from packages.domain.exceptions import DomainError, ValidationError
@@ -107,6 +108,7 @@ def create_app(config: APIConfig | None = None) -> FastAPI:
     app.include_router(analyze_router)
     app.include_router(market_router)
     app.include_router(market_data_router)
+    app.include_router(ws_market_router)
     app.include_router(company_intelligence_router)
     app.include_router(committee_router)
     app.include_router(debug_router)

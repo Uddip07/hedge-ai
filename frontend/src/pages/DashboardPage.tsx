@@ -1,21 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   TrendingUp,
   DollarSign,
   ShieldAlert,
-  Zap,
   Activity,
   Layers,
-  Sparkles,
   ArrowUpRight,
   ArrowDownRight,
+  Sparkles,
 } from 'lucide-react';
 import { StatCard } from '../components/common/StatCard';
 import { FinancialChart } from '../components/common/FinancialChart';
 import { AICommitteeWidget } from '../components/common/AICommitteeWidget';
-import { motion } from 'framer-motion';
+import { useWebSocket } from '../hooks/useWebSocket';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
-// Mock price series for chart
 const sampleChartData = [
   { date: '2026-07-01', open: 2450.0, high: 2480.0, low: 2440.0, close: 2475.5, volume: 1450000 },
   { date: '2026-07-05', open: 2475.5, high: 2510.0, low: 2470.0, close: 2505.0, volume: 1890000 },
@@ -28,16 +27,12 @@ const sampleChartData = [
 
 export const DashboardPage: React.FC = () => {
   const [activeSymbol, setActiveSymbol] = useState('RELIANCE');
+  const { tickerList } = useWebSocket();
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="p-6 space-y-6 max-w-[1600px] mx-auto"
-    >
-      {/* Top Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-5 rounded-2xl border border-cyan-500/20 relative overflow-hidden">
+    <div className="space-y-6 w-full max-w-full min-w-0">
+      {/* Top Banner */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#121826] p-5 rounded-2xl border border-[#1E293B] relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-full bg-gradient-to-l from-cyan-500/10 via-transparent to-transparent pointer-events-none" />
 
         <div className="relative z-10 space-y-1">
@@ -45,7 +40,7 @@ export const DashboardPage: React.FC = () => {
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
               INSTITUTIONAL QUANT OS
             </span>
-            <span className="text-xs font-mono text-slate-400">&bull; Live Market Feeds</span>
+            <span className="text-xs font-mono text-slate-400">&bull; Live Market Telemetry</span>
           </div>
           <h1 className="text-2xl font-mono font-bold text-slate-100">
             Hedge Fund Command Center
@@ -56,35 +51,48 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <div className="relative z-10 flex items-center gap-3">
-          <div className="glass-panel px-4 py-2 rounded-xl border border-white/10 text-right">
-            <div className="text-[10px] font-mono text-slate-400 uppercase">System Status</div>
+          <div className="bg-[#0D121F] px-4 py-2 rounded-xl border border-[#1E293B] text-right">
+            <div className="text-[10px] font-mono text-slate-400 uppercase">Engine Status</div>
             <div className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1.5 justify-end">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-              NSE Realtime Active
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              NSE Live Stream Active
             </div>
           </div>
         </div>
       </div>
 
-      {/* Indices Bar */}
+      {/* Realtime Indices Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { symbol: 'NIFTY 50', value: '24,834.80', change: +0.65 },
-          { symbol: 'BANK NIFTY', value: '52,140.25', change: +0.82 },
-          { symbol: 'NIFTY IT', value: '40,210.15', change: -0.24 },
-          { symbol: 'SENSEX', value: '81,420.90', change: +0.58 },
-        ].map((idx) => (
-          <div key={idx.symbol} className="glass-panel p-3 rounded-xl border border-white/5 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-mono font-bold text-slate-300">{idx.symbol}</div>
-              <div className="text-sm font-mono font-bold text-slate-100 num-tabular mt-0.5">{idx.value}</div>
+        {(tickerList.length > 0 ? tickerList.slice(0, 4) : [
+          { ticker: 'NIFTY.NSE', name: 'NIFTY 50', price: 24350.50, change: 125.40, change_percent: 0.52 },
+          { ticker: 'BANKNIFTY.NSE', name: 'NIFTY BANK', price: 52180.20, change: -180.30, change_percent: -0.34 },
+          { ticker: 'RELIANCE.NSE', name: 'Reliance', price: 2980.45, change: 32.10, change_percent: 1.09 },
+          { ticker: 'TCS.NSE', name: 'TCS', price: 4250.80, change: -15.20, change_percent: -0.36 },
+        ]).map((idx) => {
+          const isUp = idx.change >= 0;
+          return (
+            <div
+              key={idx.ticker}
+              className="bg-[#121826] p-3 rounded-xl border border-[#1E293B] flex items-center justify-between min-w-0"
+            >
+              <div className="truncate pr-2">
+                <div className="text-xs font-mono font-bold text-slate-300 truncate">{idx.name}</div>
+                <div className="text-sm font-mono font-bold text-slate-100 num-tabular mt-0.5">
+                  ₹{idx.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div
+                className={`text-xs font-mono font-semibold px-2 py-1 rounded flex items-center gap-1 shrink-0 ${
+                  isUp ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40' : 'bg-red-950/60 text-red-400 border border-red-800/40'
+                }`}
+              >
+                {isUp ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+                {isUp ? '+' : ''}
+                {idx.change_percent.toFixed(2)}%
+              </div>
             </div>
-            <div className={`text-xs font-mono font-semibold px-2 py-1 rounded-md flex items-center gap-1 ${idx.change >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'}`}>
-              {idx.change >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
-              {idx.change >= 0 ? '+' : ''}{idx.change}%
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Telemetry Stat Widgets */}
@@ -120,60 +128,74 @@ export const DashboardPage: React.FC = () => {
 
       {/* Main Grid: Chart + AI Committee */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <FinancialChart data={sampleChartData} symbol={activeSymbol} height={380} />
+        <div className="lg:col-span-2 space-y-6 min-w-0">
+          <ErrorBoundary fallbackTitle="Chart Error">
+            <FinancialChart data={sampleChartData} symbol={activeSymbol} height={360} />
+          </ErrorBoundary>
 
           {/* Top Ticker Screener Data Table */}
-          <div className="glass-panel rounded-xl p-5 border border-white/10 space-y-3">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <div className="bg-[#121826] rounded-xl p-5 border border-[#1E293B] space-y-3 min-w-0">
+            <div className="flex items-center justify-between border-b border-[#1E293B] pb-3">
               <h3 className="font-mono font-bold text-sm text-slate-100 flex items-center gap-2">
                 <Layers className="h-4 w-4 text-cyan-400" />
-                Active Focus Watchlist & Signals
+                Live Focus Watchlist & Signals
               </h3>
-              <span className="text-xs font-mono text-slate-400">Live Prices</span>
+              <span className="text-xs font-mono text-slate-400">WebSocket Stream</span>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto min-w-0">
               <table className="w-full text-left font-mono text-xs">
                 <thead>
-                  <tr className="text-slate-400 border-b border-white/5 pb-2">
+                  <tr className="text-slate-400 border-b border-[#1E293B] pb-2 uppercase text-[10px]">
                     <th className="pb-2">Symbol</th>
                     <th className="pb-2">Exchange</th>
                     <th className="pb-2 text-right">Price</th>
                     <th className="pb-2 text-right">24h Change</th>
-                    <th className="pb-2 text-right">Volume</th>
-                    <th className="pb-2 text-right">AI Signal</th>
+                    <th className="pb-2 text-right">AI Consensus Signal</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 text-slate-200">
-                  {[
-                    { sym: 'RELIANCE', name: 'Reliance Industries', price: '₹2,638.50', chg: +2.15, vol: '3.2M', sig: 'STRONG BUY' },
-                    { sym: 'TRENT', name: 'Trent Limited', price: '₹6,420.00', chg: +4.80, vol: '1.8M', sig: 'BUY' },
-                    { sym: 'DELHIVERY', name: 'Delhivery Ltd', price: '₹412.30', chg: -1.20, vol: '890K', sig: 'HOLD' },
-                    { sym: 'INFY', name: 'Infosys Limited', price: '₹1,820.75', chg: +0.45, vol: '2.1M', sig: 'NEUTRAL' },
-                    { sym: 'TATAMOTORS', name: 'Tata Motors', price: '₹1,045.00', chg: +1.95, vol: '4.5M', sig: 'STRONG BUY' },
-                  ].map((row) => (
-                    <tr
-                      key={row.sym}
-                      onClick={() => setActiveSymbol(row.sym)}
-                      className="hover:bg-white/5 cursor-pointer transition-colors"
-                    >
-                      <td className="py-3 font-bold text-slate-100">{row.sym}</td>
-                      <td className="py-3 text-slate-400">NSE</td>
-                      <td className="py-3 text-right num-tabular font-bold">{row.price}</td>
-                      <td className={`py-3 text-right num-tabular font-semibold ${row.chg >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {row.chg >= 0 ? '+' : ''}{row.chg}%
-                      </td>
-                      <td className="py-3 text-right num-tabular text-slate-400">{row.vol}</td>
-                      <td className="py-3 text-right">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          row.sig.includes('BUY') ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-slate-800 text-slate-300'
-                        }`}>
-                          {row.sig}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                <tbody className="divide-y divide-[#1E293B]/60 text-slate-200">
+                  {(tickerList.length > 0 ? tickerList : [
+                    { ticker: 'RELIANCE.NSE', name: 'Reliance', price: 2980.45, change_percent: 1.09 },
+                    { ticker: 'TCS.NSE', name: 'TCS', price: 4250.80, change_percent: -0.36 },
+                    { ticker: 'INFY.NSE', name: 'Infosys', price: 1820.60, change_percent: 0.80 },
+                    { ticker: 'HDFCBANK.NSE', name: 'HDFC Bank', price: 1640.25, change_percent: 0.54 },
+                  ]).map((item) => {
+                    const isUp = item.change_percent >= 0;
+                    const cleanSym = item.ticker.split('.')[0];
+                    return (
+                      <tr
+                        key={item.ticker}
+                        onClick={() => setActiveSymbol(cleanSym)}
+                        className="hover:bg-slate-800/50 cursor-pointer transition-colors"
+                      >
+                        <td className="py-3 font-bold text-slate-100">{cleanSym}</td>
+                        <td className="py-3 text-slate-400">NSE</td>
+                        <td className="py-3 text-right num-tabular font-bold">
+                          ₹{item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td
+                          className={`py-3 text-right num-tabular font-semibold ${
+                            isUp ? 'text-emerald-400' : 'text-red-400'
+                          }`}
+                        >
+                          {isUp ? '+' : ''}
+                          {item.change_percent.toFixed(2)}%
+                        </td>
+                        <td className="py-3 text-right">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              isUp
+                                ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                                : 'bg-red-950/80 text-red-300 border border-red-800/60'
+                            }`}
+                          >
+                            {isUp ? 'BUY' : 'HOLD'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -181,10 +203,12 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* AI Committee Widget Sidebar Column */}
-        <div className="space-y-6">
-          <AICommitteeWidget />
+        <div className="space-y-6 min-w-0">
+          <ErrorBoundary fallbackTitle="AI Committee Error">
+            <AICommitteeWidget />
+          </ErrorBoundary>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

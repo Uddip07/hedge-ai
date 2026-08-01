@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
 import { Button } from './Button';
 
@@ -49,11 +49,11 @@ export function Table<T>({
     }
   };
 
-  const sortedData = React.useMemo(() => {
+  const sortedData = useMemo(() => {
     if (!sortKey) return data;
-    return [...data].sort((a: any, b: any) => {
-      const valA = a[sortKey];
-      const valB = b[sortKey];
+    return [...data].sort((a: T, b: T) => {
+      const valA = (a as Record<string, unknown>)[sortKey];
+      const valB = (b as Record<string, unknown>)[sortKey];
       if (valA === valB) return 0;
       if (valA === undefined || valA === null) return 1;
       if (valB === undefined || valB === null) return -1;
@@ -70,11 +70,15 @@ export function Table<T>({
   const paginatedData = sortedData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className="flex flex-col w-full rounded-xl border border-slate-800/80 bg-slate-900/80 backdrop-blur-md overflow-hidden shadow-xl">
-      <div className="overflow-x-auto min-h-[300px]">
-        <table className="w-full text-left border-collapse text-xs">
+    <div className="flex flex-col w-full rounded-xl border border-[#1E293B] bg-[#121826] overflow-hidden shadow-xl min-w-0">
+      <div className="overflow-x-auto min-w-0 scrollbar-thin">
+        <table className="w-full text-left border-collapse text-xs min-w-[500px]">
           <thead>
-            <tr className={`border-b border-slate-800/80 bg-slate-950/80 text-slate-400 font-mono uppercase text-[11px] tracking-wider ${stickyHeader ? 'sticky top-0 z-10 backdrop-blur-md' : ''}`}>
+            <tr
+              className={`border-b border-[#1E293B] bg-[#0D121F] text-slate-400 font-mono uppercase text-[11px] tracking-wider ${
+                stickyHeader ? 'sticky top-0 z-10' : ''
+              }`}
+            >
               {columns.map((col) => (
                 <th
                   key={col.key}
@@ -83,10 +87,22 @@ export function Table<T>({
                   className={`px-4 py-3 font-semibold select-none ${
                     col.sortable ? 'cursor-pointer hover:text-slate-200 transition-colors' : ''
                   } ${
-                    col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
+                    col.align === 'right'
+                      ? 'text-right'
+                      : col.align === 'center'
+                      ? 'text-center'
+                      : 'text-left'
                   }`}
                 >
-                  <div className={`inline-flex items-center gap-1.5 ${col.align === 'right' ? 'justify-end' : col.align === 'center' ? 'justify-center' : 'justify-start'}`}>
+                  <div
+                    className={`inline-flex items-center gap-1.5 ${
+                      col.align === 'right'
+                        ? 'justify-end'
+                        : col.align === 'center'
+                        ? 'justify-center'
+                        : 'justify-start'
+                    }`}
+                  >
                     <span>{col.header}</span>
                     {col.sortable && (
                       <span className="text-slate-500">
@@ -106,7 +122,7 @@ export function Table<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/50 text-slate-200">
+          <tbody className="divide-y divide-[#1E293B]/60 text-slate-200 font-mono">
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
@@ -131,7 +147,7 @@ export function Table<T>({
                 <tr
                   key={keyExtractor(item, idx)}
                   onClick={() => onRowClick?.(item)}
-                  className={`transition-colors hover:bg-slate-800/60 ${
+                  className={`transition-colors hover:bg-slate-800/50 ${
                     onRowClick ? 'cursor-pointer' : ''
                   }`}
                 >
@@ -140,13 +156,13 @@ export function Table<T>({
                       key={col.key}
                       className={`px-4 py-3 font-medium ${
                         col.align === 'right'
-                          ? 'text-right num-tabular font-mono'
+                          ? 'text-right num-tabular'
                           : col.align === 'center'
                           ? 'text-center'
                           : 'text-left'
                       }`}
                     >
-                      {col.accessor ? col.accessor(item) : (item as any)[col.key]}
+                      {col.accessor ? col.accessor(item) : String((item as Record<string, unknown>)[col.key] ?? '')}
                     </td>
                   ))}
                 </tr>
@@ -158,11 +174,13 @@ export function Table<T>({
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-800/80 bg-slate-950/60 text-xs text-slate-400 font-mono">
+        <div className="flex items-center justify-between px-4 py-2.5 border-t border-[#1E293B] bg-[#0D121F] text-xs text-slate-400 font-mono">
           <div>
             Showing <span className="text-slate-200">{(currentPage - 1) * pageSize + 1}</span> to{' '}
-            <span className="text-slate-200">{Math.min(currentPage * pageSize, sortedData.length)}</span> of{' '}
-            <span className="text-slate-200">{sortedData.length}</span> entries
+            <span className="text-slate-200">
+              {Math.min(currentPage * pageSize, sortedData.length)}
+            </span>{' '}
+            of <span className="text-slate-200">{sortedData.length}</span> entries
           </div>
           <div className="flex items-center gap-1.5">
             <Button
