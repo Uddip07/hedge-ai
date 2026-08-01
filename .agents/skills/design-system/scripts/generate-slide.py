@@ -533,12 +533,14 @@ def generate_metrics_slide(data):
         ],
     )
 
-    metrics_html = "".join([f"""
-        <div class="card metric">
-            <div class="metric-value">{_e(m.get("value", ""))}</div>
-            <div class="metric-label">{_e(m.get("label", ""))}</div>
-        </div>
-    """ for m in metrics[:4]])
+    metric_items = []
+    for m in metrics[:4]:
+        v_str = _e(m.get("value", ""))
+        l_str = _e(m.get("label", ""))
+        metric_items.append(
+            f'<div class="card metric"><div class="metric-value">{v_str}</div><div class="metric-label">{l_str}</div></div>'
+        )
+    metrics_html = "".join(metric_items)
 
     return f"""
     <section class="slide slide--surface slide--glow">
@@ -567,12 +569,15 @@ def generate_chart_slide(data):
         ],
     )
 
-    bars_html = "".join([f"""
-        <div class="bar" style="height: {int(b.get("value", 0))}%;">
-            <span class="bar-value">{_e(b.get("display", str(b.get("value", 0)) + "%"))}</span>
-            <span class="bar-label">{_e(b.get("label", ""))}</span>
-        </div>
-    """ for b in bars])
+    bar_items = []
+    for b in bars:
+        val_int = int(b.get("value", 0))
+        d_str = _e(b.get("display", str(val_int) + "%"))
+        l_str = _e(b.get("label", ""))
+        bar_items.append(
+            f'<div class="bar" style="height: {val_int}%;"><span class="bar-value">{d_str}</span><span class="bar-label">{l_str}</span></div>'
+        )
+    bars_html = "".join(bar_items)
 
     return f"""
     <section class="slide">

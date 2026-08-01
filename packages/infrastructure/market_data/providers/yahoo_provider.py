@@ -269,8 +269,16 @@ class YahooMarketDataProvider(MarketDataProvider):
 
             # Prefer explicit dates if provided
             if start_time and end_time:
-                s_date = start_time.value.strftime("%Y-%m-%d") if hasattr(start_time, "value") else str(start_time)[:10]
-                e_date = end_time.value.strftime("%Y-%m-%d") if hasattr(end_time, "value") else str(end_time)[:10]
+                s_date = (
+                    start_time.value.strftime("%Y-%m-%d")
+                    if hasattr(start_time, "value")
+                    else str(start_time)[:10]
+                )
+                e_date = (
+                    end_time.value.strftime("%Y-%m-%d")
+                    if hasattr(end_time, "value")
+                    else str(end_time)[:10]
+                )
                 df = yf.download(
                     yf_symbol,
                     start=s_date,
