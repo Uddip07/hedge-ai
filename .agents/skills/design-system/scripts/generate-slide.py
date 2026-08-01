@@ -533,12 +533,17 @@ def generate_metrics_slide(data):
         ],
     )
 
-    metrics_html = "".join([f"""
+    metrics_html = "".join(
+        [
+            f"""
         <div class="card metric">
             <div class="metric-value">{_e(m.get("value", ""))}</div>
             <div class="metric-label">{_e(m.get("label", ""))}</div>
         </div>
-    """ for m in metrics[:4]])
+    """
+            for m in metrics[:4]
+        ]
+    )
 
     return f"""
     <section class="slide slide--surface slide--glow">
@@ -567,12 +572,17 @@ def generate_chart_slide(data):
         ],
     )
 
-    bars_html = "".join([f"""
+    bars_html = "".join(
+        [
+            f"""
         <div class="bar" style="height: {int(b.get("value", 0))}%;">
             <span class="bar-value">{_e(b.get("display", str(b.get("value", 0)) + "%"))}</span>
             <span class="bar-label">{_e(b.get("label", ""))}</span>
         </div>
-    """ for b in bars])
+    """
+            for b in bars
+        ]
+    )
 
     return f"""
     <section class="slide">
