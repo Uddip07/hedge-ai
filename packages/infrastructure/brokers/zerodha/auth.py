@@ -147,7 +147,10 @@ class ZerodhaAuthenticator:
         """Return official Zerodha OAuth login URL."""
         if not self.api_key:
             raise ValueError("ZERODHA_API_KEY is not set.")
-        return str(self.kite.login_url())
+        from packages.infrastructure.security.url_validator import validate_zerodha_url
+
+        url = str(self.kite.login_url())
+        return validate_zerodha_url(url, allow_http_for_local=True)
 
     def generate_session(self, request_token: str) -> dict[str, Any]:
         """

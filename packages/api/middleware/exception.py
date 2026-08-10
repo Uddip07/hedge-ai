@@ -40,7 +40,8 @@ class UnhandledExceptionMiddleware(BaseHTTPMiddleware):
                     "error": {
                         "code": "INTERNAL_SERVER_ERROR",
                         "message": "An unexpected internal server error occurred.",
-                        "details": str(exc),
+                        "details": None,
+                        "request_id": req_id,
                     }
                 },
             )

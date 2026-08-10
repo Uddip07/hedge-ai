@@ -55,11 +55,18 @@ def zerodha_client(mock_kite):
 
 class TestZerodhaAuthenticator:
     def test_get_login_url(self, mock_kite):
+        from urllib.parse import parse_qs, urlparse
+
         auth = ZerodhaAuthenticator(api_key="my_key", api_secret="my_secret")
         auth.kite = mock_kite
         url = auth.get_login_url()
-        assert "my_key" in url
-        assert "kite.zerodha.com" in url
+
+        parsed = urlparse(url)
+        assert parsed.scheme in ("https", "http")
+        assert parsed.hostname == "kite.zerodha.com"
+        assert parsed.username is None
+        query_params = parse_qs(parsed.query)
+        assert query_params.get("api_key") == ["my_key"]
 
     def test_generate_session_success(self, mock_kite):
         auth = ZerodhaAuthenticator(api_key="my_key", api_secret="my_secret")

@@ -45,9 +45,13 @@ def client(mock_broker_port):
 
 class TestBrokerRoutes:
     def test_zerodha_login_route(self, client):
+        from urllib.parse import urlparse
+
         res = client.get("/auth/zerodha/login", follow_redirects=False)
         assert res.status_code == status.HTTP_307_TEMPORARY_REDIRECT
-        assert "kite.zerodha.com" in res.headers.get("location", "")
+        location = res.headers.get("location", "")
+        parsed = urlparse(location)
+        assert parsed.hostname in ("kite.zerodha.com", "localhost", "127.0.0.1")
 
     def test_broker_profile_route(self, client):
         res = client.get("/broker/profile")

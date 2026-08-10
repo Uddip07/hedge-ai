@@ -106,8 +106,13 @@ class TestZerodhaAuthenticator:
         auth = ZerodhaAuthenticator(api_key="test_key", api_secret="test_sec")
         auth.kite = mock_kite
 
+        from urllib.parse import urlparse
+
         url = auth.get_login_url()
-        assert "kite.zerodha.com" in url
+        parsed = urlparse(url)
+        assert parsed.scheme in ("https", "http")
+        assert parsed.hostname == "kite.zerodha.com"
+        assert parsed.username is None
 
     def test_generate_session(self, mock_kite, tmp_path):
         store = FileTokenStore(file_path=tmp_path / "session.json")

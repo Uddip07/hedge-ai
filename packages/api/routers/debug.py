@@ -1,16 +1,14 @@
-"""
-Debug & Provider Diagnostics Router.
-
-Provides GET /debug/provider/{ticker} for inspecting raw and normalized provider payloads.
-"""
-
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from packages.api.dependencies import verify_automation_key
 from packages.domain.exceptions import ValidationError
 from packages.domain.value_objects.identifiers.ticker import Ticker
+from packages.infrastructure.logging import get_logger
 from packages.infrastructure.market_data.providers.yahoo_provider import YahooMarketDataProvider
+
+logger = get_logger(name="ihf_ai.api.routers.debug")
 
 router = APIRouter(prefix="/debug", tags=["Diagnostics"])
 
@@ -18,6 +16,7 @@ router = APIRouter(prefix="/debug", tags=["Diagnostics"])
 @router.get(
     "/provider/{ticker}",
     status_code=status.HTTP_200_OK,
+    dependencies=[Depends(verify_automation_key)],
     summary="Debug Market Data Provider Payload",
     description="Inspect raw yfinance provider response, resolved symbol, normalized quote, and validation log for a given ticker.",
 )
@@ -91,16 +90,25 @@ async def debug_provider_payload(ticker: str) -> dict[str, Any]:
             "quote_type": info.get("quoteType"),
             "market_state": getattr(fast_info, "market_state", "REGULAR"),
         }
-        normalization_log.append("Successfully fetched raw yfinance.fast_info and info metadata.")
     except Exception as err:
-        normalization_log.append(f"Failed to fetch raw yfinance metadata: {err}")
+        logger.error(
+            f"Failed to fetch raw yfinance metadata for {resolved_symbol}: {err}", exc_info=True
+        )
+        normalization_log.append("Failed to fetch raw yfinance metadata: upstream provider error.")
 
-    provider = YahooMarketDataProvider()
-    quote = provider.get_quote(t)
-    normalized_dict = quote.to_dict()
-    normalization_log.append(
-        "Normalized quote constructed successfully via YahooMarketDataProvider."
-    )
+    try:
+        provider = YahooMarketDataProvider()
+        quote = provider.get_quote(t)
+        normalized_dict = quote.to_dict()
+        normalization_log.append(
+            "Normalized quote constructed successfully via YahooMarketDataProvider."
+        )
+    except Exception as err:
+        logger.error(f"Failed to normalize quote for {t.symbol}: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to normalize quote from market data provider.",
+        ) from None
 
     return {
         "provider": "YahooFinance",

@@ -57,25 +57,50 @@ class StructuredLogger:
                 )
             self.logger.addHandler(handler)
 
-    def info(self, message: str, context: dict[str, Any] | None = None) -> None:
+    def info(
+        self,
+        message: str,
+        context: dict[str, Any] | None = None,
+        exc_info: bool | Any = False,
+    ) -> None:
         """Log info message with optional context dict."""
-        self.logger.info(message, extra={"context": context or {}})
+        self.logger.info(message, extra={"context": context or {}}, exc_info=exc_info)
 
-    def warning(self, message: str, context: dict[str, Any] | None = None) -> None:
+    def warning(
+        self,
+        message: str,
+        context: dict[str, Any] | None = None,
+        exc_info: bool | Any = False,
+    ) -> None:
         """Log warning message with optional context dict."""
-        self.logger.warning(message, extra={"context": context or {}})
+        self.logger.warning(message, extra={"context": context or {}}, exc_info=exc_info)
 
-    def error(self, message: str, context: dict[str, Any] | None = None) -> None:
+    def error(
+        self,
+        message: str,
+        context: dict[str, Any] | None = None,
+        exc_info: bool | Any = False,
+    ) -> None:
         """Log error message with optional context dict."""
-        self.logger.error(message, extra={"context": context or {}})
+        self.logger.error(message, extra={"context": context or {}}, exc_info=exc_info)
 
-    def debug(self, message: str, context: dict[str, Any] | None = None) -> None:
+    def debug(
+        self,
+        message: str,
+        context: dict[str, Any] | None = None,
+        exc_info: bool | Any = False,
+    ) -> None:
         """Log debug message with optional context dict."""
-        self.logger.debug(message, extra={"context": context or {}})
+        self.logger.debug(message, extra={"context": context or {}}, exc_info=exc_info)
 
-    def critical(self, message: str, context: dict[str, Any] | None = None) -> None:
+    def critical(
+        self,
+        message: str,
+        context: dict[str, Any] | None = None,
+        exc_info: bool | Any = False,
+    ) -> None:
         """Log critical message with optional context dict."""
-        self.logger.critical(message, extra={"context": context or {}})
+        self.logger.critical(message, extra={"context": context or {}}, exc_info=exc_info)
 
 
 def get_logger(

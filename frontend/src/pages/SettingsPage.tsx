@@ -13,6 +13,7 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { fetchBrokerProfile, fetchBrokerFunds, BrokerProfile, BrokerFunds } from '../api/broker';
 import { Button } from '../components/common/Button';
 import { toast } from '../hooks/useToast';
+import { buildSafeTargetUrl, isSafeUrl } from '../utils/url';
 
 export const SettingsPage: React.FC = () => {
   const {
@@ -52,13 +53,22 @@ export const SettingsPage: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSafeUrl(inputUrl)) {
+      toast.error('Invalid URL', 'Please enter a valid and safe HTTP/HTTPS URL or relative path.');
+      return;
+    }
     setBackendUrl(inputUrl);
     setAutoRefreshInterval(Number(inputInterval));
     toast.success('Preferences Saved', 'Terminal settings updated successfully.');
   };
 
   const handleConnectZerodha = () => {
-    window.location.href = `${inputUrl}/auth/zerodha/login`;
+    try {
+      const safeLoginUrl = buildSafeTargetUrl(inputUrl, 'auth/zerodha/login');
+      window.location.assign(safeLoginUrl);
+    } catch (err) {
+      toast.error('Navigation Error', err instanceof Error ? err.message : 'Invalid backend target URL');
+    }
   };
 
   return (

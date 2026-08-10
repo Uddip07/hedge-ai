@@ -14,8 +14,10 @@ from packages.api.schemas.response import (
 from packages.domain.value_objects.identifiers.ticker import Ticker
 from packages.infrastructure.database.models import PriceHistoryDailyModel
 from packages.infrastructure.database.session import DatabaseManager
+from packages.infrastructure.logging import get_logger
 from packages.infrastructure.market_data.providers.yahoo_provider import YahooMarketDataProvider
 
+logger = get_logger(name="ihf_ai.api.routers.health")
 router = APIRouter(tags=["Health & Status"])
 db_manager = DatabaseManager()
 
@@ -72,12 +74,13 @@ async def get_health_detailed() -> dict[str, Any]:
                 "latency_ms": db_latency,
                 "message": "Database query executed successfully",
             }
-    except Exception as exc:
+    except Exception:
         overall_healthy = False
+        logger.error("Health check database probe failed", exc_info=True)
         checks["database"] = {
             "status": "unhealthy",
             "latency_ms": round((time.perf_counter() - db_start) * 1000, 2),
-            "error": str(exc),
+            "error": "Database service probe failed",
         }
 
     # 2. Redis Cache Check
@@ -96,11 +99,12 @@ async def get_health_detailed() -> dict[str, Any]:
                 "latency_ms": r_latency,
                 "configured": True,
             }
-        except Exception as r_exc:
+        except Exception:
+            logger.error("Health check Redis probe failed", exc_info=True)
             checks["redis"] = {
                 "status": "degraded",
                 "configured": True,
-                "error": str(r_exc),
+                "error": "Redis service unavailable",
             }
     else:
         checks["redis"] = {
@@ -122,11 +126,12 @@ async def get_health_detailed() -> dict[str, Any]:
             "last_price": str(quote.price.amount),
             "timestamp": quote.timestamp.isoformat(),
         }
-    except Exception as exc:
+    except Exception:
+        logger.error("Health check Yahoo provider probe failed", exc_info=True)
         checks["yahoo_provider"] = {
             "status": "degraded",
             "latency_ms": round((time.perf_counter() - yf_start) * 1000, 2),
-            "error": str(exc),
+            "error": "Provider query degraded or unreachable",
         }
 
     # 4. Market Data Freshness in Database
@@ -139,10 +144,11 @@ async def get_health_detailed() -> dict[str, Any]:
                 "total_records": total_records,
                 "status": "active" if total_records > 0 else "empty",
             }
-    except Exception as exc:
+    except Exception:
+        logger.error("Health check data freshness query failed", exc_info=True)
         checks["data_freshness"] = {
             "status": "error",
-            "error": str(exc),
+            "error": "Failed to determine market data freshness",
         }
 
     return {
