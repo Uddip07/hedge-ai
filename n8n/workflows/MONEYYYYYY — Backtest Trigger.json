@@ -1,0 +1,234 @@
+{
+  "name": "MONEYYYYYY — Backtest Trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "backtest-trigger",
+        "options": {}
+      },
+      "id": "webhook-backtest-trigger",
+      "name": "Secured Backtest Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "moneyyyyyy-backtest-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-has-symbols",
+              "leftValue": "={{ ($json.body?.symbols || $json.symbols)?.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "cond-has-start",
+              "leftValue": "={{ !!($json.body?.start_date || $json.start_date) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "cond-has-end",
+              "leftValue": "={{ !!($json.body?.end_date || $json.end_date) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-validate-backtest-payload",
+      "name": "Validate Request Payload",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.FASTAPI_BASE_URL || 'http://localhost:8000') + '/api/v1/backtest/run' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.APP_API_AUTOMATION_KEY || 'dev-automation-secret-key' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"strategy_id\": $json.body?.strategy_id || $json.strategy_id || \"MOMENTUM_SMA\",\n  \"symbols\": $json.body?.symbols || $json.symbols || [\"RELIANCE\", \"TCS\"],\n  \"start_date\": $json.body?.start_date || $json.start_date,\n  \"end_date\": $json.body?.end_date || $json.end_date,\n  \"initial_capital\": $json.body?.initial_capital || $json.initial_capital || 1000000.0,\n  \"parameters\": $json.body?.parameters || $json.parameters || {}\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "http-run-backtest",
+      "name": "Trigger FastAPI Backtest Engine",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 220]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-backtest-result",
+              "name": "backtest_summary",
+              "value": "={\n  \"run_id\": $json.run_id,\n  \"strategy_id\": $json.strategy_id,\n  \"symbols\": $json.symbols,\n  \"total_return_pct\": $json.total_return_pct,\n  \"sharpe_ratio\": $json.sharpe_ratio,\n  \"max_drawdown_pct\": $json.max_drawdown_pct,\n  \"total_trades\": $json.total_trades,\n  \"final_portfolio_value\": $json.final_portfolio_value\n}",
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "id": "set-backtest-summary",
+      "name": "Format Backtest Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [920, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.FASTAPI_BASE_URL || 'http://localhost:8000') + '/api/v1/alerts/dispatch' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.APP_API_AUTOMATION_KEY || 'dev-automation-secret-key' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"alert_type\": \"BACKTEST_COMPLETED\",\n  \"severity\": \"INFO\",\n  \"source\": \"n8n_backtest_trigger\",\n  \"title\": \"Backtest Run Finished\",\n  \"message\": \"Backtest \" + $json.run_id + \" completed. Return: \" + $json.total_return_pct + \"%, Sharpe: \" + ($json.sharpe_ratio || 'N/A'),\n  \"metadata\": $json\n}",
+        "options": {}
+      },
+      "id": "http-notify-backtest-done",
+      "name": "Emit Backtest Completion Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1140, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.FASTAPI_BASE_URL || 'http://localhost:8000') + '/api/v1/alerts/dispatch' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.APP_API_AUTOMATION_KEY || 'dev-automation-secret-key' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"alert_type\": \"CRITICAL_SYSTEM_FAILURE\",\n  \"severity\": \"WARNING\",\n  \"source\": \"n8n_backtest_trigger\",\n  \"title\": \"Invalid Backtest Trigger Payload\",\n  \"message\": \"Rejected malformed backtest payload missing symbols or date bounds.\",\n  \"metadata\": $json\n}",
+        "options": {}
+      },
+      "id": "http-alert-invalid-backtest",
+      "name": "Reject Malformed Payload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400]
+    }
+  ],
+  "connections": {
+    "Secured Backtest Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Request Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Request Payload": {
+      "main": [
+        [
+          {
+            "node": "Trigger FastAPI Backtest Engine",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Malformed Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger FastAPI Backtest Engine": {
+      "main": [
+        [
+          {
+            "node": "Format Backtest Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Backtest Output": {
+      "main": [
+        [
+          {
+            "node": "Emit Backtest Completion Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    {
+      "name": "MONEYYYYYY",
+      "id": "moneyyyyyy-tag"
+    }
+  ]
+}

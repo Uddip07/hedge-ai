@@ -1,10 +1,11 @@
 from functools import lru_cache
 from typing import Any
 
-from fastapi import Depends
+from fastapi import Depends, Header, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from packages.ai.committee import IntelligentInvestmentCommittee
+from packages.api.config import APIConfig
 from packages.application.company_intelligence import CompanyIntelligenceOrchestrator
 from packages.application.ports.broker_port import BrokerPort
 from packages.application.ports.market_data_port import MarketDataPort
@@ -109,3 +110,30 @@ def require_role(required_role: UserRole) -> Any:
         return current_user
 
     return role_checker
+
+
+async def verify_automation_key(
+    x_api_key: str | None = Header(None, alias="X-API-Key"),
+    auth_credentials: HTTPAuthorizationCredentials | None = Security(security_bearer),
+) -> bool:
+    """
+    Validate automation API key supplied via X-API-Key or Bearer token header.
+    Secures n8n orchestration triggers and external webhook calls.
+    """
+    cfg = APIConfig()
+    expected_key = cfg.automation_api_key
+
+    provided_key: str | None = None
+    if x_api_key:
+        provided_key = x_api_key.strip()
+    elif auth_credentials and auth_credentials.credentials:
+        provided_key = auth_credentials.credentials.strip()
+
+    if not provided_key or provided_key != expected_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized: Invalid or missing automation API Key.",
+            headers={"WWW-Authenticate": "ApiKey"},
+        )
+
+    return True

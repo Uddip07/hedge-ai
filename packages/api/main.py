@@ -27,8 +27,10 @@ from packages.api.middleware import (
     UnhandledExceptionMiddleware,
 )
 from packages.api.routers import (
+    alert_router,
     analyze_router,
     auth_router,
+    backtest_router,
     broker_router,
     committee_router,
     company_intelligence_router,
@@ -111,6 +113,8 @@ def create_app(config: APIConfig | None = None) -> FastAPI:
     app.include_router(ws_market_router)
     app.include_router(company_intelligence_router)
     app.include_router(committee_router)
+    app.include_router(backtest_router)
+    app.include_router(alert_router)
     app.include_router(debug_router)
 
     return app

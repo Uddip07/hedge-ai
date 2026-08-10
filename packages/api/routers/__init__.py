@@ -4,8 +4,10 @@ API Routers Package.
 Exports health_router, analyze_router, market_router, company_intelligence_router, and committee_router.
 """
 
+from packages.api.routers.alert import router as alert_router
 from packages.api.routers.analyze import router as analyze_router
 from packages.api.routers.auth import router as auth_router
+from packages.api.routers.backtest import router as backtest_router
 from packages.api.routers.broker import router as broker_router
 from packages.api.routers.committee import router as committee_router
 from packages.api.routers.company_intelligence import (
@@ -19,8 +21,10 @@ from packages.api.routers.user import router as user_router
 from packages.api.routers.ws_market import router as ws_market_router
 
 __all__ = [
+    "alert_router",
     "analyze_router",
     "auth_router",
+    "backtest_router",
     "broker_router",
     "committee_router",
     "company_intelligence_router",

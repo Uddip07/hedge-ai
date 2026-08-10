@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from packages.api.dependencies import get_broker_port
+from packages.api.dependencies import get_broker_port, verify_automation_key
 from packages.application.ports.broker_port import BrokerPort
 
 router = APIRouter(prefix="/broker", tags=["Broker Gateway"])
@@ -145,3 +145,92 @@ async def place_gtt(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"GTT creation failed: {exc}",
         ) from exc
+
+
+@router.get(
+    "/health",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(verify_automation_key)],
+    summary="Broker Gateway Health & Session Monitor",
+    description="Check broker authentication, API connection, order book status, and rejected orders without exposing secrets or placing trades.",
+)
+async def get_broker_health(
+    broker_port: BrokerPort = Depends(get_broker_port),
+) -> dict[str, Any]:
+    """
+    Monitor Zerodha / Broker connection health, session validity, and order rejection events.
+    """
+    import time
+
+    start_time = time.perf_counter()
+
+    is_authenticated = False
+    broker_type = getattr(broker_port, "provider_name", type(broker_port).__name__)
+    profile_summary: dict[str, Any] = {}
+    total_orders = 0
+    open_orders = 0
+    complete_orders = 0
+    rejected_orders = 0
+    cancelled_orders = 0
+    recent_rejections: list[dict[str, Any]] = []
+    error_detail: str | None = None
+
+    try:
+        # Check profile/authentication
+        prof = broker_port.profile()
+        is_authenticated = True
+        profile_summary = {
+            "user_id": prof.get("user_id", "authenticated"),
+            "user_name": prof.get("user_name", "Broker User"),
+            "broker": prof.get("broker", "Zerodha"),
+        }
+    except Exception as exc:
+        error_detail = str(exc)
+
+    if is_authenticated:
+        try:
+            orders = broker_port.orders() or []
+            total_orders = len(orders)
+            for o in orders:
+                status_str = str(o.get("status", "")).upper()
+                if status_str in ("OPEN", "TRIGGER PENDING"):
+                    open_orders += 1
+                elif status_str in ("COMPLETE",):
+                    complete_orders += 1
+                elif status_str in ("REJECTED",):
+                    rejected_orders += 1
+                    recent_rejections.append(
+                        {
+                            "order_id": o.get("order_id"),
+                            "tradingsymbol": o.get("tradingsymbol"),
+                            "transaction_type": o.get("transaction_type"),
+                            "status_message": o.get("status_message")
+                            or o.get("rejection_reason", "Rejected by exchange/RMS"),
+                            "order_timestamp": o.get("order_timestamp"),
+                        }
+                    )
+                elif status_str in ("CANCELLED",):
+                    cancelled_orders += 1
+        except Exception:
+            pass
+
+    order_stats: dict[str, Any] = {
+        "total_orders": total_orders,
+        "open_orders": open_orders,
+        "complete_orders": complete_orders,
+        "rejected_orders": rejected_orders,
+        "cancelled_orders": cancelled_orders,
+        "recent_rejections": recent_rejections,
+    }
+
+    latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+    return {
+        "status": "HEALTHY" if is_authenticated else "DEGRADED",
+        "broker_type": broker_type,
+        "is_authenticated": is_authenticated,
+        "latency_ms": latency_ms,
+        "profile": profile_summary,
+        "orders_summary": order_stats,
+        "error": error_detail,
+    }

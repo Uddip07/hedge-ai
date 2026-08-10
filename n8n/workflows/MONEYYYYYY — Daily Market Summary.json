@@ -1,0 +1,103 @@
+{
+  "name": "MONEYYYYYY — Daily Market Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "45 15 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "schedule-summary-trigger",
+      "name": "Market Close Summary Trigger (15:45 IST)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ ($env.FASTAPI_BASE_URL || 'http://localhost:8000') + '/market/summary/daily' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.APP_API_AUTOMATION_KEY || 'dev-automation-secret-key' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "retryOnFail": true,
+          "maxTries": 3,
+          "waitBetweenTries": 5000
+        }
+      },
+      "id": "http-get-market-summary",
+      "name": "Fetch FastAPI Daily Market Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-summary-view",
+              "name": "summary_snapshot",
+              "value": "={\n  \"report_date\": $json.report_date,\n  \"nifty_50\": $json.benchmarks['NIFTY 50'],\n  \"bank_nifty\": $json.benchmarks['BANK NIFTY'],\n  \"sensex\": $json.benchmarks['SENSEX'],\n  \"top_gainers\": $json.top_gainers,\n  \"top_losers\": $json.top_losers,\n  \"advances_declines\": $json.market_breadth\n}",
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "id": "set-format-summary",
+      "name": "Format Daily Report",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Market Close Summary Trigger (15:45 IST)": {
+      "main": [
+        [
+          {
+            "node": "Fetch FastAPI Daily Market Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch FastAPI Daily Market Summary": {
+      "main": [
+        [
+          {
+            "node": "Format Daily Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    {
+      "name": "MONEYYYYYY",
+      "id": "moneyyyyyy-tag"
+    }
+  ]
+}

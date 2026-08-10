@@ -1,5 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchMarketOverview, fetchMarketQuote } from '../services/marketService';
+import {
+  fetchMarketOverview,
+  fetchMarketQuote,
+  fetchMarketHistory,
+  ChartDataPoint,
+} from '../services/marketService';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 export function useMarketQuote(ticker: string, enabled = true) {
@@ -10,6 +15,14 @@ export function useMarketQuote(ticker: string, enabled = true) {
     queryFn: () => fetchMarketQuote(ticker),
     enabled: enabled && Boolean(ticker),
     refetchInterval: autoRefreshInterval,
+  });
+}
+
+export function useMarketHistory(ticker: string, enabled = true) {
+  return useQuery<ChartDataPoint[]>({
+    queryKey: ['marketHistory', ticker],
+    queryFn: () => fetchMarketHistory(ticker),
+    enabled: enabled && Boolean(ticker),
   });
 }
 

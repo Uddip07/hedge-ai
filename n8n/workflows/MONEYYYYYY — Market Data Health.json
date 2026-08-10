@@ -1,0 +1,177 @@
+{
+  "name": "MONEYYYYYY — Market Data Health",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-health-check",
+      "name": "Periodic Health Schedule (15m)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ ($env.FASTAPI_BASE_URL || 'http://localhost:8000') + '/health/detailed' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.APP_API_AUTOMATION_KEY || 'dev-automation-secret-key' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "retryOnFail": true,
+          "maxTries": 3,
+          "waitBetweenTries": 3000
+        }
+      },
+      "id": "http-get-detailed-health",
+      "name": "Probe FastAPI Detailed Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-health-ok",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "healthy",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-health-ok",
+      "name": "Evaluate Subsystems",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "log-health-ok",
+              "name": "health_summary",
+              "value": "=All systems operational. DB Latency: {{ $json.components.database.latency_ms }}ms, Yahoo Latency: {{ $json.components.yahoo_provider.latency_ms }}ms",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "set-health-ok",
+      "name": "Format Health Metrics",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [920, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.FASTAPI_BASE_URL || 'http://localhost:8000') + '/api/v1/alerts/dispatch' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.APP_API_AUTOMATION_KEY || 'dev-automation-secret-key' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"alert_type\": \"MARKET_DATA_FAILURE\",\n  \"severity\": \"CRITICAL\",\n  \"source\": \"n8n_market_data_health\",\n  \"title\": \"Platform Health Check Degraded\",\n  \"message\": \"Infrastructure health degradation detected: \" + JSON.stringify($json.components || {}),\n  \"metadata\": $json\n}",
+        "options": {}
+      },
+      "id": "http-dispatch-health-alert",
+      "name": "Dispatch Infrastructure Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 400]
+    }
+  ],
+  "connections": {
+    "Periodic Health Schedule (15m)": {
+      "main": [
+        [
+          {
+            "node": "Probe FastAPI Detailed Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Probe FastAPI Detailed Health": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Subsystems",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Subsystems": {
+      "main": [
+        [
+          {
+            "node": "Format Health Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Dispatch Infrastructure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    {
+      "name": "MONEYYYYYY",
+      "id": "moneyyyyyy-tag"
+    }
+  ]
+}

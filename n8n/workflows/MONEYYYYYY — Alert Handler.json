@@ -1,0 +1,101 @@
+{
+  "name": "MONEYYYYYY — Alert Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alert-dispatcher",
+        "options": {}
+      },
+      "id": "webhook-alert-trigger",
+      "name": "Secured Alert Receiver Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "moneyyyyyy-alert-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.FASTAPI_BASE_URL || 'http://localhost:8000') + '/api/v1/alerts/dispatch' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.APP_API_AUTOMATION_KEY || 'dev-automation-secret-key' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"alert_type\": $json.body?.alert_type || $json.alert_type || \"CRITICAL_SYSTEM_FAILURE\",\n  \"severity\": $json.body?.severity || $json.severity || \"ERROR\",\n  \"source\": $json.body?.source || $json.source || \"n8n_alert_handler\",\n  \"title\": $json.body?.title || $json.title || \"System Alert Triggered\",\n  \"message\": $json.body?.message || $json.message || \"No details provided\",\n  \"metadata\": $json.body?.metadata || $json.metadata || {}\n}",
+        "options": {}
+      },
+      "id": "http-dispatch-alert-fastapi",
+      "name": "Persist Alert via FastAPI Gateway",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-alert-confirmation",
+              "name": "alert_dispatched_response",
+              "value": "={\n  \"alert_id\": $json.alert_id,\n  \"status\": $json.status,\n  \"recorded\": $json.recorded,\n  \"timestamp\": $json.timestamp\n}",
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "id": "set-alert-ack",
+      "name": "Format Alert Acknowledgment",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Secured Alert Receiver Webhook": {
+      "main": [
+        [
+          {
+            "node": "Persist Alert via FastAPI Gateway",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Alert via FastAPI Gateway": {
+      "main": [
+        [
+          {
+            "node": "Format Alert Acknowledgment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    {
+      "name": "MONEYYYYYY",
+      "id": "moneyyyyyy-tag"
+    }
+  ]
+}

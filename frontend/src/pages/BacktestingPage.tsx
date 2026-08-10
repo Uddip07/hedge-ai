@@ -2,21 +2,14 @@ import React, { useState } from 'react';
 import { FinancialChart } from '../components/common/FinancialChart';
 import { Play as PlayIcon, TrendingUp, BarChart2 } from 'lucide-react';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
+import { useMarketHistory } from '../hooks/useMarketData';
 
 export const BacktestingPage: React.FC = () => {
   const [strategyName, setStrategyName] = useState('Momentum Breakout & VWAP Reversion');
   const [initialCapital, setInitialCapital] = useState('1000000');
   const [isRunning, setIsRunning] = useState(false);
 
-  const equityCurveData = [
-    { date: '2025-01-01', close: 1000000, open: 1000000, high: 1000000, low: 1000000, volume: 0 },
-    { date: '2025-03-01', close: 1080000, open: 1000000, high: 1100000, low: 1000000, volume: 0 },
-    { date: '2025-06-01', close: 1150000, open: 1080000, high: 1180000, low: 1070000, volume: 0 },
-    { date: '2025-09-01', close: 1240000, open: 1150000, high: 1260000, low: 1140000, volume: 0 },
-    { date: '2025-12-01', close: 1320000, open: 1240000, high: 1350000, low: 1230000, volume: 0 },
-    { date: '2026-03-01', close: 1410000, open: 1320000, high: 1430000, low: 1310000, volume: 0 },
-    { date: '2026-07-31', close: 1548000, open: 1410000, high: 1560000, low: 1400000, volume: 0 },
-  ];
+  const { data: chartData, isLoading: chartLoading } = useMarketHistory('NIFTY.NSE');
 
   const handleRunBacktest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,7 +99,12 @@ export const BacktestingPage: React.FC = () => {
         {/* Results Graph & Metrics */}
         <div className="lg:col-span-2 space-y-6 min-w-0">
           <ErrorBoundary fallbackTitle="Equity Curve Error">
-            <FinancialChart data={equityCurveData} symbol="EQUITY_CURVE" height={340} />
+            <FinancialChart
+              data={chartData || []}
+              symbol="NIFTY.NSE"
+              height={340}
+              isLoading={chartLoading}
+            />
           </ErrorBoundary>
 
           {/* Backtest Performance Indicators */}

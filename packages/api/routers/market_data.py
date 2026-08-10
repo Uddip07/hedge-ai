@@ -5,14 +5,19 @@ Exposes REST API endpoints for data import, job tracking, database statistics,
 symbol/company lookups, historical prices, market replay, and backtesting feeds.
 """
 
-from datetime import date
+import uuid
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
+from packages.api.dependencies import verify_automation_key
+from packages.domain.enums.market import Timeframe
+from packages.domain.value_objects.identifiers.ticker import Ticker
+from packages.domain.value_objects.temporal.timestamps import Timestamp
 from packages.infrastructure.database.config import DatabaseConfig
 from packages.infrastructure.database.models import (
     CompanyModel,
@@ -22,11 +27,47 @@ from packages.infrastructure.database.models import (
 )
 from packages.infrastructure.database.session import DatabaseManager
 from packages.infrastructure.market_data.importer import MarketDataImporter
+from packages.infrastructure.market_data.providers.yahoo_provider import YahooMarketDataProvider
 from packages.infrastructure.market_data.replay import MarketReplayService
 from packages.infrastructure.market_data.scanner import DataScanner
 
 router = APIRouter(prefix="/api/v1/market-data", tags=["Market Data Platform"])
 db_manager = DatabaseManager()
+
+
+def _to_float(val: Any) -> float:
+    if hasattr(val, "amount"):
+        return float(val.amount)
+    if hasattr(val, "value"):
+        return float(val.value)
+    return float(val)
+
+
+def _to_int(val: Any) -> int:
+    if hasattr(val, "value"):
+        return int(val.value)
+    if hasattr(val, "quantity"):
+        return int(val.quantity)
+    return int(val)
+
+
+class SyncMarketDataRequest(BaseModel):
+    symbols: list[str] = Field(
+        default_factory=lambda: ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "SBIN"]
+    )
+    days: int = Field(default=30, ge=1, le=365)
+
+
+class SyncMarketDataResponse(BaseModel):
+    job_id: str
+    status: str
+    symbols_requested: int
+    symbols_synced: int
+    rows_imported: int
+    synced_symbols: list[str]
+    errors: list[dict[str, str]]
+    started_at: str
+    completed_at: str
 
 
 # Response Schemas
@@ -268,3 +309,168 @@ def get_replay(
             }
             for c in candles
         ]
+
+
+@router.post(
+    "/sync", response_model=SyncMarketDataResponse, dependencies=[Depends(verify_automation_key)]
+)
+def sync_market_data(payload: SyncMarketDataRequest | None = None) -> SyncMarketDataResponse:
+    """
+    Orchestrate market data ingestion directly from Yahoo Finance provider into database.
+    Validates quotes and OHLCV daily history, upserts Company and Symbol records,
+    and idempotently persists price history without duplicates.
+    """
+    req = payload or SyncMarketDataRequest()
+    job_id = str(uuid.uuid4())
+    started_at = datetime.now(UTC)
+
+    provider = YahooMarketDataProvider()
+    total_imported = 0
+    synced_symbols: list[str] = []
+    errors: list[dict[str, str]] = []
+
+    # Record job in database
+    with db_manager.session() as session:
+        job = ImportJobModel(
+            id=job_id,
+            status="RUNNING",
+            target_directory="YAHOO_FINANCE_SYNC",
+            total_files=len(req.symbols),
+            processed_files=0,
+            total_rows=0,
+            started_at=started_at,
+        )
+        session.add(job)
+
+    start_time_iso = (
+        (datetime.now(UTC) - timedelta(days=req.days))
+        .replace(hour=0, minute=0, second=0)
+        .isoformat()
+    )
+    end_time_iso = datetime.now(UTC).isoformat()
+    start_ts = Timestamp.from_iso(start_time_iso)
+    end_ts = Timestamp.from_iso(end_time_iso)
+
+    for raw_symbol in req.symbols:
+        clean_sym = raw_symbol.strip().upper()
+        if not clean_sym:
+            continue
+        ticker_str = (
+            f"{clean_sym}.NSE"
+            if "." not in clean_sym and not clean_sym.startswith("^")
+            else clean_sym
+        )
+
+        try:
+            t = Ticker(ticker_str)
+            profile = provider.get_company_profile(t)
+            candles = provider.get_historical_ohlcv(t, Timeframe.DAY_1, start_ts, end_ts)
+
+            with db_manager.session() as session:
+                # Upsert Company
+                existing_company = session.scalar(
+                    select(CompanyModel).where(CompanyModel.symbol == clean_sym)
+                )
+                if not existing_company:
+                    company_id = str(uuid.uuid4())
+                    company = CompanyModel(
+                        id=company_id,
+                        symbol=clean_sym,
+                        company_name=profile.name if profile and profile.name else clean_sym,
+                        exchange="NSE",
+                        sector=profile.sector.value if profile and profile.sector else "LARGE_CAP",
+                        industry=profile.industry if profile and profile.industry else "General",
+                        listing_status="ACTIVE",
+                    )
+                    session.add(company)
+                    session.flush()
+                else:
+                    company_id = existing_company.id
+
+                # Upsert Symbol
+                existing_symbol = session.scalar(
+                    select(SymbolModel).where(SymbolModel.symbol == clean_sym)
+                )
+                if not existing_symbol:
+                    sym_entry = SymbolModel(
+                        id=str(uuid.uuid4()),
+                        symbol=clean_sym,
+                        name=profile.name if profile and profile.name else clean_sym,
+                        exchange="NSE",
+                        asset_type="EQUITY",
+                        is_active=True,
+                    )
+                    session.add(sym_entry)
+
+                # Persist price history candles idempotently
+                for candle in candles:
+                    if isinstance(candle.timestamp, Timestamp):
+                        candle_date = candle.timestamp.value.date()
+                    elif isinstance(candle.timestamp, datetime):
+                        candle_date = candle.timestamp.date()
+                    elif isinstance(candle.timestamp, date):
+                        candle_date = candle.timestamp
+                    elif hasattr(candle.timestamp, "value") and hasattr(
+                        candle.timestamp.value, "date"
+                    ):
+                        candle_date = candle.timestamp.value.date()
+                    else:
+                        candle_date = date.fromisoformat(str(candle.timestamp)[:10])
+                    existing_price = session.scalar(
+                        select(PriceHistoryDailyModel).where(
+                            PriceHistoryDailyModel.company_id == company_id,
+                            PriceHistoryDailyModel.date == candle_date,
+                        )
+                    )
+                    if not existing_price:
+                        open_val = _to_float(candle.open)
+                        high_val = _to_float(candle.high)
+                        low_val = _to_float(candle.low)
+                        close_val = _to_float(candle.close)
+                        vol_val = _to_int(candle.volume)
+
+                        price_record = PriceHistoryDailyModel(
+                            id=str(uuid.uuid4()),
+                            company_id=company_id,
+                            date=candle_date,
+                            open=open_val,
+                            high=high_val,
+                            low=low_val,
+                            close=close_val,
+                            adjusted_close=close_val,
+                            volume=vol_val,
+                            vwap=close_val,
+                        )
+                        session.add(price_record)
+                        total_imported += 1
+
+                synced_symbols.append(clean_sym)
+
+        except Exception as exc:
+            errors.append({"symbol": clean_sym, "error": str(exc)})
+
+    completed_at = datetime.now(UTC)
+    final_status = "COMPLETED" if not errors else ("PARTIAL" if synced_symbols else "FAILED")
+
+    # Update job record
+    with db_manager.session() as session:
+        job_record: ImportJobModel | None = session.get(ImportJobModel, job_id)
+        if job_record is not None:
+            job_record.status = final_status
+            job_record.processed_files = len(synced_symbols)
+            job_record.total_rows = total_imported
+            job_record.completed_at = completed_at
+            if errors:
+                job_record.error_message = "; ".join(f"{e['symbol']}: {e['error']}" for e in errors)
+
+    return SyncMarketDataResponse(
+        job_id=job_id,
+        status=final_status,
+        symbols_requested=len(req.symbols),
+        symbols_synced=len(synced_symbols),
+        rows_imported=total_imported,
+        synced_symbols=synced_symbols,
+        errors=errors,
+        started_at=started_at.isoformat(),
+        completed_at=completed_at.isoformat(),
+    )

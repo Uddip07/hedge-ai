@@ -3,17 +3,13 @@ import { Building2, Search, TrendingUp, BarChart2, ShieldCheck, FileText, CheckC
 import { FinancialChart } from '../components/common/FinancialChart';
 import { StatCard } from '../components/common/StatCard';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
-
-const sampleChartData = [
-  { date: '2026-07-01', open: 6100.0, high: 6250.0, low: 6050.0, close: 6200.0, volume: 1200000 },
-  { date: '2026-07-10', open: 6200.0, high: 6380.0, low: 6180.0, close: 6350.0, volume: 1540000 },
-  { date: '2026-07-20', open: 6350.0, high: 6450.0, low: 6300.0, close: 6410.0, volume: 1800000 },
-  { date: '2026-07-31', open: 6410.0, high: 6520.0, low: 6390.0, close: 6420.0, volume: 1950000 },
-];
+import { useMarketHistory } from '../hooks/useMarketData';
 
 export const CompanyAnalysisPage: React.FC = () => {
   const [symbol, setSymbol] = useState('TRENT');
   const [searchInput, setSearchInput] = useState('TRENT');
+
+  const { data: chartData, isLoading: chartLoading } = useMarketHistory(symbol);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +65,12 @@ export const CompanyAnalysisPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6 min-w-0">
           <ErrorBoundary fallbackTitle="Financial Chart Error">
-            <FinancialChart data={sampleChartData} symbol={symbol} height={360} />
+            <FinancialChart
+              data={chartData || []}
+              symbol={symbol}
+              height={360}
+              isLoading={chartLoading}
+            />
           </ErrorBoundary>
 
           {/* Quarterly Earnings & Growth Table */}

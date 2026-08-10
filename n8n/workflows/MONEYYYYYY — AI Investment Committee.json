@@ -1,0 +1,134 @@
+{
+  "name": "MONEYYYYYY — AI Investment Committee",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "committee-evaluate",
+        "options": {}
+      },
+      "id": "webhook-committee-trigger",
+      "name": "Secured Committee Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 200],
+      "webhookId": "moneyyyyyy-committee-webhook"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "schedule-committee-trigger",
+      "name": "Weekly Monday Review Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.FASTAPI_BASE_URL || 'http://localhost:8000') + '/committee/evaluate' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.APP_API_AUTOMATION_KEY || 'dev-automation-secret-key' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ticker\": $json.body?.ticker || $json.ticker || \"RELIANCE\",\n  \"horizon\": $json.body?.horizon || $json.horizon || \"MEDIUM_TERM\",\n  \"style\": $json.body?.style || $json.style || \"BALANCED\",\n  \"user_query\": $json.body?.user_query || $json.user_query || \"Evaluate institutional suitability and consensus recommendation.\"\n}",
+        "options": {
+          "timeout": 120000,
+          "retryOnFail": true,
+          "maxTries": 2,
+          "waitBetweenTries": 5000
+        }
+      },
+      "id": "http-evaluate-committee",
+      "name": "Execute FastAPI Multi-Agent Committee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 290]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-committee-verdict",
+              "name": "decision_summary",
+              "value": "={\n  \"decision_id\": $json.decision_id,\n  \"ticker\": $json.ticker,\n  \"winning_recommendation\": $json.winning_recommendation,\n  \"consensus_score\": $json.consensus_score,\n  \"confidence\": $json.confidence,\n  \"agreement_ratio\": $json.agreement_ratio,\n  \"verdict_summary\": $json.verdict_summary,\n  \"timestamp\": $json.timestamp\n}",
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "id": "set-decision-summary",
+      "name": "Format Committee Decision",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [700, 290]
+    }
+  ],
+  "connections": {
+    "Secured Committee Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute FastAPI Multi-Agent Committee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Monday Review Schedule": {
+      "main": [
+        [
+          {
+            "node": "Execute FastAPI Multi-Agent Committee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute FastAPI Multi-Agent Committee": {
+      "main": [
+        [
+          {
+            "node": "Format Committee Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    {
+      "name": "MONEYYYYYY",
+      "id": "moneyyyyyy-tag"
+    }
+  ]
+}

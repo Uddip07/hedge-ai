@@ -2,45 +2,27 @@ import React, { useState } from 'react';
 import { TrendingUp, Search, Layers, RefreshCw } from 'lucide-react';
 import { FinancialChart } from '../components/common/FinancialChart';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useMarketHistory } from '../hooks/useMarketData';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
-
-const sampleChartData = [
-  { date: '2026-07-01', open: 2450.0, high: 2480.0, low: 2440.0, close: 2475.5, volume: 1450000 },
-  { date: '2026-07-05', open: 2475.5, high: 2510.0, low: 2470.0, close: 2505.0, volume: 1890000 },
-  { date: '2026-07-10', open: 2505.0, high: 2525.0, low: 2490.0, close: 2495.0, volume: 1230000 },
-  { date: '2026-07-15', open: 2495.0, high: 2540.0, low: 2490.0, close: 2535.0, volume: 2100000 },
-  { date: '2026-07-20', open: 2535.0, high: 2580.0, low: 2530.0, close: 2570.0, volume: 2450000 },
-  { date: '2026-07-25', open: 2570.0, high: 2610.0, low: 2565.0, close: 2605.0, volume: 2900000 },
-  { date: '2026-07-31', open: 2605.0, high: 2645.0, low: 2600.0, close: 2638.5, volume: 3200000 },
-];
 
 export const LiveMarketPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('ALL');
   const [selectedSymbol, setSelectedSymbol] = useState('RELIANCE');
+
   const { tickerList, status, reconnect } = useWebSocket();
+  const { data: chartData, isLoading: chartLoading } = useMarketHistory(selectedSymbol);
 
-  const mockStocks = [
-    { symbol: 'RELIANCE', name: 'Reliance Industries Ltd.', sector: 'Energy', price: 2980.45, change: +1.09, volume: '8.4M', mcap: 'Large Cap' },
-    { symbol: 'TCS', name: 'Tata Consultancy Services', sector: 'IT', price: 4250.80, change: -0.36, volume: '3.1M', mcap: 'Large Cap' },
-    { symbol: 'INFY', name: 'Infosys Limited', sector: 'IT', price: 1820.60, change: +0.80, volume: '5.9M', mcap: 'Large Cap' },
-    { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd.', sector: 'Banking', price: 1640.25, change: +0.54, volume: '12.4M', mcap: 'Large Cap' },
-    { symbol: 'ICICIBANK', name: 'ICICI Bank Ltd.', sector: 'Banking', price: 1215.10, change: -0.35, volume: '9.8M', mcap: 'Large Cap' },
-    { symbol: 'TATAMOTORS', name: 'Tata Motors Ltd.', sector: 'Auto', price: 1045.00, change: +1.95, volume: '4.5M', mcap: 'Large Cap' },
-    { symbol: 'TRENT', name: 'Trent Limited', sector: 'Retail', price: 6420.00, change: +4.80, volume: '1.8M', mcap: 'Large Cap' },
-  ];
-
-  const activeStocks = tickerList.length > 0
-    ? tickerList.map((t) => ({
-        symbol: t.ticker.split('.')[0],
-        name: t.name,
-        sector: 'Equities',
-        price: t.price,
-        change: t.change_percent,
-        volume: `${(t.volume / 1000000).toFixed(1)}M`,
-        mcap: 'Large Cap',
-      }))
-    : mockStocks;
+  const activeStocks = tickerList.map((t) => ({
+    symbol: t.ticker.split('.')[0],
+    fullTicker: t.ticker,
+    name: t.name || t.ticker,
+    sector: 'Equities',
+    price: t.price,
+    change: t.change_percent,
+    volume: `${(t.volume / 1000000).toFixed(1)}M`,
+    mcap: 'Large Cap',
+  }));
 
   const filteredStocks = activeStocks.filter((s) => {
     const matchesSearch =
@@ -50,7 +32,8 @@ export const LiveMarketPage: React.FC = () => {
     return matchesSearch && matchesSector;
   });
 
-  const activePrice = activeStocks.find((s) => s.symbol === selectedSymbol)?.price || 2980.45;
+  const activeStock = activeStocks.find((s) => s.symbol === selectedSymbol);
+  const activePrice = activeStock ? activeStock.price : 0;
 
   return (
     <div className="space-y-6 w-full max-w-full min-w-0 font-mono">
@@ -100,7 +83,12 @@ export const LiveMarketPage: React.FC = () => {
         {/* Table & Chart Left Column */}
         <div className="lg:col-span-2 space-y-6 min-w-0">
           <ErrorBoundary fallbackTitle="Market Chart Error">
-            <FinancialChart data={sampleChartData} symbol={selectedSymbol} height={360} />
+            <FinancialChart
+              data={chartData || []}
+              symbol={selectedSymbol}
+              height={360}
+              isLoading={chartLoading}
+            />
           </ErrorBoundary>
 
           <div className="bg-[#121826] rounded-2xl p-5 border border-[#1E293B] space-y-4 min-w-0">
@@ -136,32 +124,40 @@ export const LiveMarketPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1E293B]/60 text-slate-200">
-                  {filteredStocks.map((s) => (
-                    <tr
-                      key={s.symbol}
-                      onClick={() => setSelectedSymbol(s.symbol)}
-                      className={`hover:bg-slate-800/50 cursor-pointer transition-colors ${
-                        selectedSymbol === s.symbol ? 'bg-cyan-950/40 font-semibold' : ''
-                      }`}
-                    >
-                      <td className="py-3 font-bold text-slate-100">{s.symbol}</td>
-                      <td className="py-3 text-slate-300 truncate max-w-[150px]">{s.name}</td>
-                      <td className="py-3 text-slate-400">{s.sector}</td>
-                      <td className="py-3 text-right num-tabular font-bold">
-                        ₹{s.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  {filteredStocks.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-500">
+                        Loading backend ticker matrix...
                       </td>
-                      <td
-                        className={`py-3 text-right num-tabular font-semibold ${
-                          s.change >= 0 ? 'text-emerald-400' : 'text-red-400'
+                    </tr>
+                  ) : (
+                    filteredStocks.map((s) => (
+                      <tr
+                        key={s.symbol}
+                        onClick={() => setSelectedSymbol(s.symbol)}
+                        className={`hover:bg-slate-800/50 cursor-pointer transition-colors ${
+                          selectedSymbol === s.symbol ? 'bg-cyan-950/40 font-semibold' : ''
                         }`}
                       >
-                        {s.change >= 0 ? '+' : ''}
-                        {s.change.toFixed(2)}%
-                      </td>
-                      <td className="py-3 text-right num-tabular text-slate-400">{s.volume}</td>
-                      <td className="py-3 text-right text-slate-400">{s.mcap}</td>
-                    </tr>
-                  ))}
+                        <td className="py-3 font-bold text-slate-100">{s.symbol}</td>
+                        <td className="py-3 text-slate-300 truncate max-w-[150px]">{s.name}</td>
+                        <td className="py-3 text-slate-400">{s.sector}</td>
+                        <td className="py-3 text-right num-tabular font-bold">
+                          ₹{s.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td
+                          className={`py-3 text-right num-tabular font-semibold ${
+                            s.change >= 0 ? 'text-emerald-400' : 'text-red-400'
+                          }`}
+                        >
+                          {s.change >= 0 ? '+' : ''}
+                          {s.change.toFixed(2)}%
+                        </td>
+                        <td className="py-3 text-right num-tabular text-slate-400">{s.volume}</td>
+                        <td className="py-3 text-right text-slate-400">{s.mcap}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -176,45 +172,55 @@ export const LiveMarketPage: React.FC = () => {
               <span className="text-xs text-cyan-400 font-bold">{selectedSymbol}</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              {/* Bids */}
-              <div className="space-y-1.5">
-                <div className="text-emerald-400 font-bold border-b border-[#1E293B] pb-1 text-[11px] uppercase">
-                  Bids (Buy)
-                </div>
-                {[
-                  { p: activePrice, q: 1250 },
-                  { p: activePrice - 0.5, q: 2400 },
-                  { p: activePrice - 1.0, q: 3100 },
-                  { p: activePrice - 1.5, q: 4500 },
-                  { p: activePrice - 2.0, q: 6200 },
-                ].map((b, i) => (
-                  <div key={i} className="flex justify-between text-slate-300">
-                    <span className="num-tabular font-bold text-emerald-400">₹{b.p.toFixed(2)}</span>
-                    <span className="text-slate-400 num-tabular">{b.q}</span>
-                  </div>
-                ))}
+            {activePrice === 0 ? (
+              <div className="py-8 text-center text-slate-500 text-xs">
+                Awaiting market quote...
               </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                {/* Bids */}
+                <div className="space-y-1.5">
+                  <div className="text-emerald-400 font-bold border-b border-[#1E293B] pb-1 text-[11px] uppercase">
+                    Bids (Buy)
+                  </div>
+                  {[
+                    { p: activePrice, q: 1250 },
+                    { p: activePrice - 0.5, q: 2400 },
+                    { p: activePrice - 1.0, q: 3100 },
+                    { p: activePrice - 1.5, q: 4500 },
+                    { p: activePrice - 2.0, q: 6200 },
+                  ].map((b, i) => (
+                    <div key={i} className="flex justify-between text-slate-300">
+                      <span className="num-tabular font-bold text-emerald-400">
+                        ₹{b.p.toFixed(2)}
+                      </span>
+                      <span className="text-slate-400 num-tabular">{b.q}</span>
+                    </div>
+                  ))}
+                </div>
 
-              {/* Asks */}
-              <div className="space-y-1.5">
-                <div className="text-red-400 font-bold border-b border-[#1E293B] pb-1 text-[11px] uppercase">
-                  Asks (Sell)
-                </div>
-                {[
-                  { p: activePrice + 0.5, q: 950 },
-                  { p: activePrice + 1.0, q: 1800 },
-                  { p: activePrice + 1.5, q: 4200 },
-                  { p: activePrice + 2.0, q: 5800 },
-                  { p: activePrice + 2.5, q: 7100 },
-                ].map((a, i) => (
-                  <div key={i} className="flex justify-between text-slate-300">
-                    <span className="num-tabular font-bold text-red-400">₹{a.p.toFixed(2)}</span>
-                    <span className="text-slate-400 num-tabular">{a.q}</span>
+                {/* Asks */}
+                <div className="space-y-1.5">
+                  <div className="text-red-400 font-bold border-b border-[#1E293B] pb-1 text-[11px] uppercase">
+                    Asks (Sell)
                   </div>
-                ))}
+                  {[
+                    { p: activePrice + 0.5, q: 950 },
+                    { p: activePrice + 1.0, q: 1800 },
+                    { p: activePrice + 1.5, q: 4200 },
+                    { p: activePrice + 2.0, q: 5800 },
+                    { p: activePrice + 2.5, q: 7100 },
+                  ].map((a, i) => (
+                    <div key={i} className="flex justify-between text-slate-300">
+                      <span className="num-tabular font-bold text-red-400">
+                        ₹{a.p.toFixed(2)}
+                      </span>
+                      <span className="text-slate-400 num-tabular">{a.q}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

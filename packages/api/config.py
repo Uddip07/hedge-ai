@@ -44,3 +44,6 @@ class APIConfig:
         default_factory=lambda: os.getenv("APP_API_OPENAPI_URL", "/openapi.json")
     )
     allowed_origins: list[str] = field(default_factory=_default_allowed_origins)
+    automation_api_key: str = field(
+        default_factory=lambda: os.getenv("APP_API_AUTOMATION_KEY", "dev-automation-secret-key")
+    )
