@@ -64,13 +64,27 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 ```
 
-### 3. Run the Full Test Suite & Master Verifier
-```bash
-# Run complete unit test suite
-pytest
+### 3. Run Native Full-Stack Services (No Docker)
+```powershell
+# Terminal 1: Start FastAPI Application Backend (Port 8000)
+.\scripts\start-backend.ps1
 
-# Run master domain layer architecture verifier
-python tests/verify_all_domain.py
+# Terminal 2: Start React / Vite Frontend (Port 5173)
+.\scripts\start-frontend.ps1
+
+# Terminal 3: Start Native Windows n8n Automation Engine (Port 5678)
+.\scripts\start-n8n.ps1
+```
+
+### 4. Run the Full Test Suite & Quality Gates
+```bash
+# Run complete test suite
+uv run pytest
+
+# Check code formatting & linting
+uv run black --check .
+uv run ruff check .
+uv run mypy packages/
 ```
 
 ---

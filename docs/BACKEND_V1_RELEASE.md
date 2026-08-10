@@ -49,7 +49,7 @@ The **MONEYYYYYY** AI Investment Operating System backend platform has achieved 
 - [x] **Documentation Updated** – Architecture diagrams, API contract (`API_CONTRACT.md`), OpenAPI spec, and developer guides are current.
 - [x] **Security Review** – No hard‑coded secrets, environment‑variable configuration validated, input sanitisation in place.
 - [x] **Performance Benchmark** – All critical endpoints meet latency SLA (< 200 ms) on CI benchmark.
-- [x] **Deployment Artefacts** – Docker images built, Helm chart validated, CI pipeline passes.
+- [x] **Deployment Artefacts** – Native deployment scripts verified, CI pipeline passes.
 - [x] **Operational Playbooks** – Runbooks for start‑up, health‑checks, and rollback are in `docs/DEPLOYMENT_GUIDE.md`.
 
 **Result:** Backend Version 1.0.0 is **Release Candidate – COMPLETE** and ready for frontend consumption.
