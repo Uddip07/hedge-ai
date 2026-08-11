@@ -209,10 +209,10 @@ def get_prices(
 
 
 @router.post("/import", response_model=ImportTriggerResponse)
-def trigger_import(path: str | None = None) -> ImportTriggerResponse:
-    """Trigger background bulk dataset import scan and ingestion."""
+def trigger_import() -> ImportTriggerResponse:
+    """Trigger background bulk dataset import scan and ingestion using configured market_data_path."""
     cfg = DatabaseConfig()
-    target_path = Path(path or cfg.market_data_path)
+    target_path = Path(cfg.market_data_path).resolve()
 
     scanner = DataScanner(target_path)
     discovered_files = scanner.scan_files()

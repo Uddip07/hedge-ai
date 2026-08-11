@@ -6,12 +6,14 @@ nested directories, and ZIP archives while filtering unsupported metadata files.
 Zero hardcoding of folder names.
 """
 
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from packages.infrastructure.security.path_validator import resolve_safe_path, sanitize_filename
+from packages.infrastructure.database.config import DatabaseConfig
+from packages.infrastructure.security.path_validator import sanitize_filename
 
 IGNORED_PATTERNS = [
     r"^\._",
@@ -41,17 +43,20 @@ class DataScanner:
     Recursive Auto-Discovery Scanner Engine for Market Data Directory.
     """
 
-    def __init__(self, root_path: str | Path) -> None:
+    def __init__(self, root_path: str | Path | None = None) -> None:
         if root_path is None:
-            raise ValueError("Scanner root_path cannot be None.")
-        str_root = str(root_path).strip()
-        if not str_root:
+            cfg = DatabaseConfig()
+            root_path = cfg.market_data_path
+
+        raw_str = str(root_path).strip()
+        if not raw_str:
             raise ValueError("Scanner root_path cannot be empty.")
-        if any(ord(c) < 32 or ord(c) == 127 for c in str_root):
+        if any(ord(c) < 32 or ord(c) == 127 for c in raw_str):
             raise ValueError("Scanner root_path contains illegal control characters.")
-        if str_root.startswith(("\\\\", "//")):
+        if raw_str.startswith(("\\\\", "//")):
             raise ValueError("UNC network paths are forbidden for market data scanner.")
-        self.root_path = Path(str_root).resolve()
+
+        self.root_path: Path = Path(raw_str).resolve()
 
     def is_ignored(self, path: Path | str) -> bool:
         """
@@ -91,16 +96,22 @@ class DataScanner:
         if not self.root_path.exists() or not self.root_path.is_dir():
             return []
 
-        folders = []
+        folders: list[Path] = []
         for entry in self.root_path.iterdir():
-            # Validate each entry stays within root_path
-            try:
-                safe_entry = resolve_safe_path(self.root_path, entry)
-            except ValueError:
+            if not entry.is_dir() or self.is_ignored(entry):
                 continue
 
-            if safe_entry.is_dir() and not self.is_ignored(safe_entry):
-                folders.append(safe_entry)
+            # Ensure resolved entry stays strictly inside root_path (symlink protection)
+            try:
+                resolved_entry = entry.resolve()
+                if not resolved_entry.is_relative_to(self.root_path):
+                    continue
+            except (ValueError, AttributeError):
+                common = os.path.commonpath([str(self.root_path), str(entry.resolve())])
+                if common != str(self.root_path):
+                    continue
+
+            folders.append(entry)
         return sorted(folders)
 
     def scan_files(self) -> list[DiscoveredFile]:
@@ -114,32 +125,44 @@ class DataScanner:
 
         # Scan filesystem files recursively with strict containment validation
         for path in self.root_path.rglob("*"):
-            try:
-                safe_path = resolve_safe_path(self.root_path, path)
-            except ValueError:
+            if not path.is_file() or self.is_ignored(path):
                 continue
 
-            if safe_path.is_file() and not self.is_ignored(safe_path):
-                suffix = safe_path.suffix.lower()
-                if suffix in [".csv", ".zip"]:
-                    # Determine top-level folder name relative to root
-                    try:
-                        rel = safe_path.relative_to(self.root_path)
-                        top_folder = rel.parts[0] if len(rel.parts) > 1 else "root"
-                    except ValueError:
-                        top_folder = "root"
+            # Ensure resolved path does not escape root_path (symlink escape protection)
+            try:
+                resolved_path = path.resolve()
+                if not resolved_path.is_relative_to(self.root_path):
+                    continue
+            except (ValueError, AttributeError):
+                common = os.path.commonpath([str(self.root_path), str(path.resolve())])
+                if common != str(self.root_path):
+                    continue
 
-                    symbol = self.extract_symbol_from_name(safe_path.name)
-                    discovered.append(
-                        DiscoveredFile(
-                            file_path=safe_path,
-                            relative_path=str(rel),
-                            folder_name=top_folder,
-                            file_type=suffix[1:],
-                            estimated_symbol=symbol,
-                            size_bytes=safe_path.stat().st_size,
-                        )
+            suffix = path.suffix.lower()
+            if suffix in [".csv", ".zip"]:
+                # Determine top-level folder name relative to root
+                try:
+                    rel = path.relative_to(self.root_path)
+                    top_folder = rel.parts[0] if len(rel.parts) > 1 else "root"
+                except ValueError:
+                    top_folder = "root"
+
+                symbol = self.extract_symbol_from_name(path.name)
+                try:
+                    size = path.stat().st_size
+                except OSError:
+                    size = 0
+
+                discovered.append(
+                    DiscoveredFile(
+                        file_path=path,
+                        relative_path=str(rel),
+                        folder_name=top_folder,
+                        file_type=suffix[1:],
+                        estimated_symbol=symbol,
+                        size_bytes=size,
                     )
+                )
 
         return discovered
 

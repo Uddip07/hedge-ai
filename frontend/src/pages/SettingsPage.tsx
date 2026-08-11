@@ -13,7 +13,7 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { fetchBrokerProfile, fetchBrokerFunds, BrokerProfile, BrokerFunds } from '../api/broker';
 import { Button } from '../components/common/Button';
 import { toast } from '../hooks/useToast';
-import { buildSafeTargetUrl, isSafeUrl } from '../utils/url';
+import { isSafeUrl } from '../utils/url';
 
 export const SettingsPage: React.FC = () => {
   const {
@@ -63,12 +63,8 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleConnectZerodha = () => {
-    try {
-      const safeLoginUrl = buildSafeTargetUrl(inputUrl, 'auth/zerodha/login');
-      window.location.assign(safeLoginUrl);
-    } catch (err) {
-      toast.error('Navigation Error', err instanceof Error ? err.message : 'Invalid backend target URL');
-    }
+    // Navigate strictly via fixed application route proxied to backend Zerodha OAuth endpoint
+    window.location.assign('/api/auth/zerodha/login');
   };
 
   return (
@@ -117,7 +113,7 @@ export const SettingsPage: React.FC = () => {
               <div>
                 <span className="text-slate-400 block text-[10px]">AVAILABLE MARGIN</span>
                 <span className="text-cyan-300 font-bold">
-                  ₹{brokerFunds ? brokerFunds.available_cash.toLocaleString('en-IN') : '12,50,000.00'}
+                  {brokerFunds ? `₹${brokerFunds.available_cash.toLocaleString('en-IN')}` : '—'}
                 </span>
               </div>
             </div>
