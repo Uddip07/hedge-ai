@@ -37,18 +37,36 @@ class QuoteMapper:
     @classmethod
     def to_market_quote(cls, ticker: Ticker, raw: dict[str, Any]) -> MarketQuote:
         p_val = Decimal(str(raw.get("last_price", raw.get("close", raw.get("price", "1000.00")))))
-        chg = Decimal(str(raw.get("change_percent", raw.get("change_24h", "0.00"))))
+        chg = Decimal(str(raw.get("change", "0.00")))
+        chg_pct = Decimal(str(raw.get("change_percent", raw.get("change_24h", "0.00"))))
         vol = Decimal(str(raw.get("volume", raw.get("volume_24h", "0.00"))))
+        open_p = Decimal(str(raw.get("open", p_val)))
+        high_p = Decimal(str(raw.get("high", p_val)))
+        low_p = Decimal(str(raw.get("low", p_val)))
+        prev_close = Decimal(str(raw.get("previous_close", p_val)))
         ts = cls._parse_ts(raw.get("timestamp"))
+        market_status = str(raw.get("market_status", "CLOSED"))
+        source = str(raw.get("source", "YAHOO"))
+        yahoo_sym = str(raw.get("yahoo_symbol", ""))
 
         price_obj = Price(money=Money(amount=p_val, currency=Currency()))
 
         return MarketQuote(
             ticker=ticker,
             price=price_obj,
-            change_24h=chg,
+            change=chg,
+            change_percent=chg_pct,
+            volume=vol,
+            open=open_p,
+            high=high_p,
+            low=low_p,
+            previous_close=prev_close,
+            change_24h=chg_pct,
             volume_24h=vol,
             timestamp=ts,
+            market_status=market_status,
+            source=source,
+            yahoo_symbol=yahoo_sym,
         )
 
     @classmethod

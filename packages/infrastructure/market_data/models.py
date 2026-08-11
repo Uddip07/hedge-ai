@@ -23,19 +23,45 @@ class MarketQuote:
 
     ticker: Ticker
     price: Price
+    change: Decimal = Decimal("0.00")
+    change_percent: Decimal = Decimal("0.00")
+    volume: Decimal = Decimal("0.00")
+    open: Decimal = Decimal("0.00")
+    high: Decimal = Decimal("0.00")
+    low: Decimal = Decimal("0.00")
+    previous_close: Decimal = Decimal("0.00")
     change_24h: Decimal = Decimal("0.00")
     volume_24h: Decimal = Decimal("0.00")
     timestamp: Timestamp = field(default_factory=Timestamp.now_utc)
+    market_status: str = "CLOSED"
+    source: str = "YAHOO"
+    yahoo_symbol: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize MarketQuote to dictionary."""
         return {
             "ticker": self.ticker.full_symbol,
+            "symbol": self.ticker.symbol,
+            "yahoo_symbol": self.yahoo_symbol,
+            "exchange": self.ticker.exchange.value if self.ticker.exchange else "NSE",
             "price": str(self.price.amount),
             "currency": self.price.money.currency.code,
-            "change_24h": str(self.change_24h),
-            "volume_24h": str(self.volume_24h),
+            "previous_close": str(self.previous_close),
+            "change": str(self.change),
+            "change_percent": str(self.change_percent),
+            "open": str(self.open),
+            "high": str(self.high),
+            "low": str(self.low),
+            "volume": str(self.volume if self.volume != Decimal("0.00") else self.volume_24h),
+            "change_24h": str(
+                self.change_24h if self.change_24h != Decimal("0.00") else self.change_percent
+            ),
+            "volume_24h": str(
+                self.volume_24h if self.volume_24h != Decimal("0.00") else self.volume
+            ),
             "timestamp": self.timestamp.isoformat(),
+            "market_status": self.market_status,
+            "source": self.source,
         }
 
 

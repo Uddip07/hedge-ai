@@ -22,11 +22,23 @@ router = APIRouter(prefix="/market", tags=["Market Data"])
 
 
 def _to_float(val: Any) -> float:
+    if val is None:
+        return 0.0
     if hasattr(val, "amount"):
         return float(val.amount)
     if hasattr(val, "value"):
         return float(val.value)
-    return float(val)
+    if isinstance(val, dict):
+        if "amount" in val:
+            return float(val["amount"])
+        if "money" in val and isinstance(val["money"], dict) and "amount" in val["money"]:
+            return float(val["money"]["amount"])
+        if "value" in val:
+            return float(val["value"])
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.0
 
 
 def _normalize_ticker_symbol(ticker: str) -> str:
@@ -39,28 +51,47 @@ def _normalize_ticker_symbol(ticker: str) -> str:
     if clean_ticker.startswith("^"):
         if clean_ticker in ("^NSEI", "^NSEBANK", "^BSESN"):
             return clean_ticker
-    elif clean_ticker in ("NIFTY", "NIFTY50", "NIFTY 50"):
+    elif clean_ticker in ("NIFTY", "NIFTY50", "NIFTY 50", "NIFTY.NSE"):
         return "NIFTY.NSE"
-    elif clean_ticker in ("BANKNIFTY", "BANK NIFTY"):
+    elif clean_ticker in ("BANKNIFTY", "BANK NIFTY", "BANKNIFTY.NSE"):
         return "BANKNIFTY.NSE"
-    elif clean_ticker in ("SENSEX",):
+    elif clean_ticker in ("SENSEX", "SENSEX.BSE"):
         return "SENSEX.BSE"
+    elif clean_ticker.endswith(".NS"):
+        return f"{clean_ticker[:-3]}.NSE"
+    elif clean_ticker.endswith(".BO"):
+        return f"{clean_ticker[:-3]}.BSE"
     elif "." not in clean_ticker:
         return f"{clean_ticker}.NSE"
     return clean_ticker
+
+
+def _format_ts(ts: Any) -> tuple[str, str]:
+    if hasattr(ts, "isoformat") and callable(ts.isoformat):
+        iso_s = ts.isoformat()
+    elif hasattr(ts, "value") and hasattr(ts.value, "isoformat"):
+        iso_s = ts.value.isoformat()
+    elif isinstance(ts, dict):
+        iso_s = str(ts.get("iso") or ts.get("timestamp") or ts.get("value") or "")
+    else:
+        iso_s = str(ts)
+    date_s = iso_s[:10] if len(iso_s) >= 10 and "-" in iso_s[:10] else iso_s
+    return iso_s, date_s
 
 
 @router.get(
     "/{ticker}",
     status_code=status.HTTP_200_OK,
     summary="Get Market Data Quote",
-    description="Retrieve current market price quote, exchange status, and company profile for a given asset ticker.",
+    description="Retrieve current canonical market price quote, exchange status, and company profile for a given asset ticker.",
 )
 async def get_market_data(
     ticker: str,
     refresh: bool = False,
     market_data_port: MarketDataPort = Depends(get_market_data_port),
 ) -> dict[str, Any]:
+    from datetime import datetime, timedelta, timezone
+
     clean_ticker = _normalize_ticker_symbol(ticker)
 
     try:
@@ -78,41 +109,138 @@ async def get_market_data(
     exch = t.exchange or ExchangeType.NSE
     profile = market_data_port.get_company_profile(t)
 
+    # Name resolution
+    default_name = t.symbol
+    if t.symbol in ("NIFTY", "NIFTY50", "NIFTY.NSE", "^NSEI"):
+        default_name = "NIFTY 50"
+    elif t.symbol in ("BANKNIFTY", "BANKNIFTY.NSE", "^NSEBANK"):
+        default_name = "BANK NIFTY"
+    elif t.symbol in ("SENSEX", "SENSEX.BSE", "^BSESN"):
+        default_name = "SENSEX"
+
+    company_name = profile.name if profile else default_name
+    sector = profile.sector.value if profile and hasattr(profile.sector, "value") else "LARGE_CAP"
+    industry = profile.industry if profile else "General"
+
     if hasattr(market_data_port, "manager"):
         quote = market_data_port.manager.get_quote(t, force_refresh=refresh)
     else:
         price = market_data_port.get_latest_price(t)
         is_open = market_data_port.is_market_open(exch)
+        price_f = _to_float(price)
+        ist = timezone(timedelta(hours=5, minutes=30))
+        now_ist = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S IST")
         return {
-            "ticker": t.full_symbol,
             "symbol": t.symbol,
+            "ticker": t.full_symbol,
+            "yahoo_symbol": getattr(t, "yahoo_symbol", ""),
             "exchange": exch.value,
-            "price": str(price.amount),
-            "change": "0.00",
-            "change_percent": "0.00",
-            "volume": "0.00",
-            "open": str(price.amount),
-            "high": str(price.amount),
-            "low": str(price.amount),
-            "previous_close": str(price.amount),
-            "currency": price.money.currency.code,
-            "timestamp": t.symbol,
-            "market_status": "OPEN" if is_open else "CLOSED",
+            "name": company_name,
+            "price": price_f,
+            "previous_close": price_f,
+            "change": 0.0,
+            "change_percent": 0.0,
+            "open": price_f,
+            "high": price_f,
+            "low": price_f,
+            "volume": 0,
+            "currency": price.money.currency.code if hasattr(price, "money") else "INR",
+            "timestamp": Timestamp.now_utc().isoformat(),
+            "timestamp_ist": now_ist,
+            "market_state": "OPEN" if is_open else "CLOSED",
             "is_market_open": is_open,
-            "company_name": profile.name if profile else t.symbol,
-            "sector": profile.sector.value if profile else "LARGE_CAP",
-            "industry": profile.industry if profile else "General",
+            "source": "FALLBACK",
+            "company_name": company_name,
+            "sector": sector,
+            "industry": industry,
         }
 
-    res = cast(dict[str, Any], quote.to_dict())
-    res.update(
-        {
-            "company_name": profile.name if profile else t.symbol,
-            "sector": profile.sector.value if profile else "LARGE_CAP",
-            "industry": profile.industry if profile else "General",
-        }
+    raw_dict = cast(dict[str, Any], quote.to_dict()) if hasattr(quote, "to_dict") else {}
+    price_val = _to_float(getattr(quote, "price", raw_dict.get("price", 0.0)))
+    prev_close_val = _to_float(
+        getattr(quote, "previous_close", raw_dict.get("previous_close", price_val))
     )
-    return res
+    if prev_close_val == 0.0:
+        prev_close_val = price_val
+
+    change_val = _to_float(
+        getattr(quote, "change", raw_dict.get("change", price_val - prev_close_val))
+    )
+    change_pct_val = _to_float(
+        getattr(
+            quote,
+            "change_percent",
+            raw_dict.get(
+                "change_percent",
+                ((change_val / prev_close_val) * 100) if prev_close_val > 0 else 0.0,
+            ),
+        )
+    )
+
+    open_val = _to_float(getattr(quote, "open", raw_dict.get("open", price_val)))
+    high_val = _to_float(getattr(quote, "high", raw_dict.get("high", price_val)))
+    low_val = _to_float(getattr(quote, "low", raw_dict.get("low", price_val)))
+    vol_val = _to_float(getattr(quote, "volume", raw_dict.get("volume", 0.0)))
+
+    status_str = str(getattr(quote, "market_status", raw_dict.get("market_status", "CLOSED")))
+    if hasattr(status_str, "value"):
+        status_str = status_str.value
+    is_open = status_str == "OPEN" or getattr(
+        quote, "is_market_open", raw_dict.get("is_market_open", False)
+    )
+
+    source_str = str(getattr(quote, "source", raw_dict.get("source", "YAHOO_LAST_CLOSE")))
+    yahoo_sym = str(getattr(quote, "yahoo_symbol", raw_dict.get("yahoo_symbol", "")))
+    if not yahoo_sym and hasattr(market_data_port, "manager"):
+        primary = getattr(market_data_port.manager, "primary", None)
+        if primary and hasattr(primary, "_resolve_yf_symbol"):
+            yahoo_sym = primary._resolve_yf_symbol(t)
+
+    ts_val = getattr(quote, "timestamp", raw_dict.get("timestamp"))
+    ts_iso, _ = _format_ts(ts_val or Timestamp.now_utc())
+
+    ist = timezone(timedelta(hours=5, minutes=30))
+    try:
+        ts_inner = getattr(ts_val, "value", None)
+        if isinstance(ts_inner, datetime):
+            quote_dt_ist = ts_inner.astimezone(ist)
+        elif isinstance(ts_val, datetime):
+            quote_dt_ist = ts_val.astimezone(ist)
+        else:
+            quote_dt = datetime.fromisoformat(ts_iso.replace("Z", "+00:00"))
+            quote_dt_ist = quote_dt.astimezone(ist)
+        quote_ist_str = quote_dt_ist.strftime("%Y-%m-%d %H:%M:%S IST")
+    except Exception:
+        quote_ist_str = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S IST")
+
+    server_clock_ist = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S IST")
+
+    return {
+        "symbol": t.symbol,
+        "ticker": t.full_symbol,
+        "yahoo_symbol": yahoo_sym,
+        "exchange": exch.value,
+        "name": company_name,
+        "price": price_val,
+        "previous_close": prev_close_val,
+        "change": round(change_val, 2),
+        "change_percent": round(change_pct_val, 2),
+        "open": open_val,
+        "high": high_val,
+        "low": low_val,
+        "volume": int(vol_val),
+        "currency": str(raw_dict.get("currency", "INR")),
+        "timestamp": ts_iso,
+        "timestamp_ist": quote_ist_str,
+        "quote_timestamp": ts_iso,
+        "system_clock": server_clock_ist,
+        "market_state": status_str,
+        "is_market_open": is_open,
+        "source": source_str,
+        "company_name": company_name,
+        "sector": sector,
+        "industry": industry,
+    }
 
 
 @router.get(
@@ -147,17 +275,32 @@ async def get_market_history(
 
     result: list[dict[str, Any]] = []
     for c in candles:
-        if hasattr(c, "to_dict"):
-            result.append(c.to_dict())
-        else:
+        if hasattr(c, "open") and hasattr(c, "close"):
+            ts_iso, date_str = _format_ts(c.timestamp)
             result.append(
                 {
-                    "date": str(getattr(c, "timestamp", getattr(c, "date", ""))),
-                    "open": float(getattr(c, "open", 0.0)),
-                    "high": float(getattr(c, "high", 0.0)),
-                    "low": float(getattr(c, "low", 0.0)),
-                    "close": float(getattr(c, "close", getattr(c, "price", 0.0))),
-                    "volume": float(getattr(c, "volume", 0.0)),
+                    "date": date_str,
+                    "timestamp": ts_iso,
+                    "open": _to_float(c.open),
+                    "high": _to_float(c.high),
+                    "low": _to_float(c.low),
+                    "close": _to_float(c.close),
+                    "volume": _to_float(c.volume),
+                }
+            )
+        elif isinstance(c, dict):
+            ohlcv_dict = c.get("ohlcv", c)
+            raw_ts = c.get("date", c.get("timestamp", ""))
+            ts_iso, date_str = _format_ts(raw_ts)
+            result.append(
+                {
+                    "date": date_str,
+                    "timestamp": ts_iso,
+                    "open": _to_float(ohlcv_dict.get("open", 0.0)),
+                    "high": _to_float(ohlcv_dict.get("high", 0.0)),
+                    "low": _to_float(ohlcv_dict.get("low", 0.0)),
+                    "close": _to_float(ohlcv_dict.get("close", 0.0)),
+                    "volume": _to_float(ohlcv_dict.get("volume", 0.0)),
                 }
             )
 

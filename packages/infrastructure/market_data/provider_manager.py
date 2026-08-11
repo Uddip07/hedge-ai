@@ -185,6 +185,8 @@ class ProviderManager(MarketProvider):
                     real_status = self.get_market_status(exch)
 
                     # Normalize into final domain MarketQuote with real market status
+                    source_val = getattr(raw_quote, "source", "YAHOO")
+                    yahoo_sym = getattr(raw_quote, "yahoo_symbol", "")
                     final_quote = MarketQuote(
                         ticker=raw_quote.ticker if hasattr(raw_quote, "ticker") else ticker,
                         exchange=exch,
@@ -197,8 +199,12 @@ class ProviderManager(MarketProvider):
                         low=getattr(raw_quote, "low", Decimal("0.00")),
                         previous_close=getattr(raw_quote, "previous_close", Decimal("0.00")),
                         currency=raw_quote.price.money.currency.code,
-                        timestamp=Timestamp.now_utc(),
+                        timestamp=raw_quote.timestamp
+                        if (hasattr(raw_quote, "timestamp") and raw_quote.timestamp)
+                        else Timestamp.now_utc(),
                         market_status=real_status,
+                        source=source_val,
+                        yahoo_symbol=yahoo_sym,
                     )
 
                     ttl = self.get_cache_ttl(exch)

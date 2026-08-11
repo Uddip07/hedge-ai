@@ -49,12 +49,15 @@ class MarketQuote:
     currency: str = "INR"
     timestamp: Timestamp = field(default_factory=Timestamp.now_utc)
     market_status: MarketStatus = MarketStatus.OPEN
+    source: str = "YAHOO"
+    yahoo_symbol: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize MarketQuote to dictionary."""
         return {
             "ticker": self.ticker.full_symbol,
             "symbol": self.ticker.symbol,
+            "yahoo_symbol": self.yahoo_symbol,
             "exchange": self.exchange.value,
             "price": str(self.price.amount),
             "change": str(self.change),
@@ -66,8 +69,13 @@ class MarketQuote:
             "previous_close": str(self.previous_close),
             "currency": self.currency,
             "timestamp": self.timestamp.isoformat(),
-            "market_status": self.market_status.value,
-            "is_market_open": self.market_status == MarketStatus.OPEN,
+            "market_status": self.market_status.value
+            if hasattr(self.market_status, "value")
+            else str(self.market_status),
+            "is_market_open": (
+                self.market_status == MarketStatus.OPEN or str(self.market_status) == "OPEN"
+            ),
+            "source": self.source,
         }
 
     @classmethod

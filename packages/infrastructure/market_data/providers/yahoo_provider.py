@@ -174,6 +174,30 @@ class YahooMarketDataProvider(MarketDataProvider):
 
         return str(value)
 
+    @staticmethod
+    def get_indian_market_state() -> tuple[str, str, bool]:
+        """
+        Determine market state, quote source, and is_open in Asia/Kolkata (IST).
+        """
+        from datetime import datetime, timedelta, timezone
+
+        ist = timezone(timedelta(hours=5, minutes=30))
+        now_ist = datetime.now(ist)
+        weekday = now_ist.weekday()  # 0 = Monday, 6 = Sunday
+
+        if weekday >= 5:  # Saturday, Sunday
+            return "CLOSED", "YAHOO_LAST_CLOSE", False
+
+        time_min = now_ist.hour * 60 + now_ist.minute
+        if 540 <= time_min < 555:
+            return "PRE_MARKET", "YAHOO_PRE_MARKET", False
+        elif 555 <= time_min < 930:
+            return "OPEN", "YAHOO_DELAYED", True
+        elif 930 <= time_min < 960:
+            return "POST_MARKET", "YAHOO_POST_MARKET", False
+        else:
+            return "CLOSED", "YAHOO_LAST_CLOSE", False
+
     def get_quote(self, ticker: Ticker) -> MarketQuote:
         yf_symbol = self._resolve_yf_symbol(ticker)
         try:
@@ -220,8 +244,21 @@ class YahooMarketDataProvider(MarketDataProvider):
             else:
                 change_percent = (change / previous) * Decimal("100")
 
+            m_state, source, _ = self.get_indian_market_state()
+
+            market_time = self._safe_get(fast_info, "last_volume_time") or info.get(
+                "regularMarketTime"
+            )
+            from datetime import UTC, datetime
+
+            if market_time and isinstance(market_time, (int, float)) and market_time > 0:
+                quote_ts = datetime.fromtimestamp(market_time, tz=UTC).isoformat()
+            else:
+                quote_ts = Timestamp.now_utc().isoformat()
+
             payload = {
                 "symbol": ticker.full_symbol,
+                "yahoo_symbol": yf_symbol,
                 "price": str(last),
                 "change": str(change.quantize(Decimal("0.01"))),
                 "change_percent": str(change_percent.quantize(Decimal("0.01"))),
@@ -231,7 +268,9 @@ class YahooMarketDataProvider(MarketDataProvider):
                 "low": str(low),
                 "previous_close": str(previous),
                 "currency": currency,
-                "timestamp": Timestamp.now_utc().isoformat(),
+                "timestamp": quote_ts,
+                "market_status": m_state,
+                "source": source,
             }
 
             validated = QuoteValidator.validate_quote(payload)

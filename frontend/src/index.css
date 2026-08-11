@@ -2,23 +2,25 @@
 
 @layer base {
   :root {
-    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
-    --bg-app: #080a0e;
-    --bg-surface: #0e121b;
-    --bg-surface-hover: #151b27;
-    --bg-card: rgba(14, 18, 27, 0.75);
+    --bg-app: #06080e;
+    --bg-surface: #090e17;
+    --bg-surface-hover: #0e1624;
+    --bg-panel: #0d1524;
+    --bg-panel-elevated: #121d30;
 
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-active: rgba(6, 182, 212, 0.4);
+    --border-subtle: #162235;
+    --border-strong: #1f3350;
+    --border-accent: rgba(6, 182, 212, 0.4);
 
-    --accent-emerald: #10b981;
-    --accent-rose: #ef4444;
-    --accent-amber: #f59e0b;
     --accent-cyan: #06b6d4;
-    --accent-blue: #3b82f6;
-    --accent-purple: #8b5cf6;
+    --accent-blue: #38bdf8;
+    --accent-emerald: #10b981;
+    --accent-rose: #f43f5e;
+    --accent-amber: #f59e0b;
+    --accent-purple: #a855f7;
 
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
@@ -33,24 +35,30 @@
   }
 }
 
-/* Glassmorphism Panel Utility */
-.glass-panel {
-  background-color: rgba(14, 18, 27, 0.7);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Institutional Terminal Panels */
+.terminal-panel {
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
 }
 
-.glass-panel-hover {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+.terminal-panel-elevated {
+  background-color: var(--bg-panel-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.75rem;
 }
 
-.glass-panel-hover:hover {
-  background-color: rgba(21, 27, 39, 0.85);
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+.terminal-panel-hover {
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Financial Monospace Tabular Numbers */
+.terminal-panel-hover:hover {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-strong);
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.6);
+}
+
+/* Tabular Financial Numbers */
 .num-tabular {
   font-family: 'JetBrains Mono', monospace;
   font-variant-numeric: tabular-nums;
@@ -63,49 +71,20 @@
   height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #080a0e;
+  background: #06080e;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 9999px;
+  background: #1e293b;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: #334155;
 }
 
-/* Aura Glow Utilities */
-.glow-cyan {
-  box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.25);
+/* Grid overlay pattern */
+.grid-bg {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
 }
-.glow-emerald {
-  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
-}
-.glow-rose {
-  box-shadow: 0 0 25px -5px rgba(239, 68, 68, 0.25);
-}
-.glow-blue {
-  box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.25);
-}
-
-/* Shimmer Loading Skeleton */
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.skeleton-shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.03) 25%,
-    rgba(255, 255, 255, 0.08) 50%,
-    rgba(255, 255, 255, 0.03) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.8s infinite;
-}
-
-
