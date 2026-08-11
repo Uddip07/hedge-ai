@@ -66,13 +66,22 @@ def resolve_safe_path(base_dir: str | Path, untrusted_path: str | Path) -> Path:
     # Normalize backslashes to forward slashes for robust cross-platform resolution
     normalized_path = str_path.replace("\\", "/")
 
+    # Check for Windows drive letter specification (e.g. C: or C:/...)
+    has_win_drive = bool(re.match(r"^[a-zA-Z]:", normalized_path))
+
     # Check for absolute path injection attempts
     raw_path_obj = Path(normalized_path)
     if raw_path_obj.is_absolute() or raw_path_obj.drive or normalized_path.startswith("/"):
-        # If absolute, verify candidate is within base_dir
         candidate = raw_path_obj.resolve()
+    elif has_win_drive:
+        if resolved_base.drive:
+            candidate = Path(str_path).resolve()
+        else:
+            # On POSIX systems, a Windows drive path cannot be inside a POSIX base_dir
+            raise ValueError(
+                f"Path traversal detected: '{str_path}' is an absolute Windows drive path outside '{resolved_base}'."
+            )
     else:
-        # Resolve candidate relative to base_dir
         candidate = (resolved_base / normalized_path).resolve()
 
     # Verify candidate is contained strictly within base_dir
