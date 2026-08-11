@@ -69,9 +69,11 @@ class MarketQuote:
             "previous_close": str(self.previous_close),
             "currency": self.currency,
             "timestamp": self.timestamp.isoformat(),
-            "market_status": self.market_status.value
-            if hasattr(self.market_status, "value")
-            else str(self.market_status),
+            "market_status": (
+                self.market_status.value
+                if hasattr(self.market_status, "value")
+                else str(self.market_status)
+            ),
             "is_market_open": (
                 self.market_status == MarketStatus.OPEN or str(self.market_status) == "OPEN"
             ),

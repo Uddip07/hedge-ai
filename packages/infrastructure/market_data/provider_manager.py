@@ -199,9 +199,11 @@ class ProviderManager(MarketProvider):
                         low=getattr(raw_quote, "low", Decimal("0.00")),
                         previous_close=getattr(raw_quote, "previous_close", Decimal("0.00")),
                         currency=raw_quote.price.money.currency.code,
-                        timestamp=raw_quote.timestamp
-                        if (hasattr(raw_quote, "timestamp") and raw_quote.timestamp)
-                        else Timestamp.now_utc(),
+                        timestamp=(
+                            raw_quote.timestamp
+                            if (hasattr(raw_quote, "timestamp") and raw_quote.timestamp)
+                            else Timestamp.now_utc()
+                        ),
                         market_status=real_status,
                         source=source_val,
                         yahoo_symbol=yahoo_sym,
